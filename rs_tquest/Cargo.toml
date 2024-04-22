@@ -1,0 +1,13 @@
+[package]
+name = "rs_tquest"
+version = "0.1.0"
+edition = "2021"
+description = "Simple observable pattern implementation"
+license = "MIT"
+repository = "https://github.com/OkieOth/rs_tquest"
+readme = "README.md"
+keywords = ["cli", "questionnaire", "terminal"]
+categories = ["command-line-utilities"]
+
+
+[dependencies]

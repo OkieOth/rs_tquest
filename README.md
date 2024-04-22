@@ -1,2 +1,1 @@
-# rs_tquest
-Rust library crate to implement terminal based questionnaires 
+rs_tquest/README.md
