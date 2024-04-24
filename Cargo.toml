@@ -3,5 +3,4 @@
 
 members = [
     "tquest",
-    "examples/simple",
-    "examples/ui_test"]
+    "examples/simple"]
