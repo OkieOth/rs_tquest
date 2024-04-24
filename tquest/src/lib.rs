@@ -2,7 +2,7 @@ mod ui;
 
 mod questionaire;
 
-pub use questionaire::{Questionaire, StringEntry, IntEntry, FloatEntry, BoolEntry, 
+pub use questionaire::{Questionaire, QuestionaireBuilder, StringEntry, IntEntry, FloatEntry, BoolEntry, 
     OptionEntry};
 
 pub use ui::Ui;

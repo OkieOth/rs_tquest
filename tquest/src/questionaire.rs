@@ -2,6 +2,7 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 use builder_m4cro::Builder;
+use anyhow::{Result};
 
 use crate::Ui;
 
@@ -73,7 +74,7 @@ impl Questionaire {
     pub fn builder() -> QuestionaireBuilder {
         QuestionaireBuilder::default()
     }
-    pub fn run(&mut self) -> Option<Vec<QuestionAnswer>>{
+    pub fn run(&mut self) -> Result<Option<Vec<QuestionAnswer>>> {
         let mut ui = Ui::new(self);
         return ui.run();
     }
