@@ -61,7 +61,7 @@ fn render_app(frame: &mut Frame) {
         Direction::Vertical,
         [
             Constraint::Length(1),
-            Constraint::Percentage(20),
+            Constraint::Min(6),
             Constraint::Percentage(80),
             Constraint::Length(1),
             Constraint::Length(3),
@@ -75,7 +75,7 @@ fn render_app(frame: &mut Frame) {
         main_layout[0],
     );
 
-    let question_txt = Paragraph::new("What's your favourite Linux shell?");
+    let question_txt = Paragraph::new("What's your favourite Linux shell? (press 'h' for help)");
 
     let block = Block::new()
         .borders(Borders::ALL)
@@ -107,6 +107,12 @@ fn render_app(frame: &mut Frame) {
     .right_aligned();
     frame.render_widget(navigation, main_layout[3]);
 
+    // if app.show_popup {
+    //     let block = Block::default().title("Popup").borders(Borders::ALL);
+    //     let area = centered_rect(60, 20, area);
+    //     f.render_widget(Clear, area); //this clears out the background
+    //     f.render_widget(block, area);
+    // }
 
     let line_gauge = LineGauge::default()
         .block(Block::default().borders(Borders::ALL).title(" Progress "))

@@ -1,6 +1,6 @@
 ![WIP](https://img.shields.io/badge/work%20in%20progress-red)
 
-# rs_tquest
+# tquest
 Rust library crate to implement terminal based questionnaires
 
 

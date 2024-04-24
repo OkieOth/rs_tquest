@@ -3,6 +3,8 @@ use std::cell::RefCell;
 
 use builder_m4cro::Builder;
 
+use crate::Ui;
+
 #[derive(Debug, Builder)]
 pub struct StringEntry {
     pub default_value: Option<String>,
@@ -58,6 +60,10 @@ pub struct QuestionEntry {
     pub next: Option<Rc<RefCell<QuestionEntry>>>,
 }
 
+pub struct QuestionaireResults {
+    pub answers: Vec<QuestionAnswer>,
+}
+
 #[derive(Debug, Default)]
 pub struct Questionaire {
     pub questions: Vec<Rc<RefCell<QuestionEntry>>>,
@@ -68,9 +74,8 @@ impl Questionaire {
         QuestionaireBuilder::default()
     }
     pub fn run(&mut self) -> Option<Vec<QuestionAnswer>>{
-        // TODO
-        println!("Run the questionaire");
-        None // TODO
+        let mut ui = Ui::new(self);
+        return ui.run();
     }
 }
 
@@ -163,16 +168,4 @@ pub enum EntryInput {
     Bool(bool),
     Option(String),
     ProceedQuery(bool),
-}
-
-
-
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-    }
 }

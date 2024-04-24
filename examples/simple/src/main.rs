@@ -1,4 +1,4 @@
-use rs_tquest::{Questionaire, QuestionaireBuilder, StringEntry};
+use tquest::{Questionaire, QuestionaireBuilder, StringEntry};
 
 fn question_01(builder: &mut QuestionaireBuilder, level: u8) {
 }
@@ -46,6 +46,6 @@ fn main() {
 
     let results =questionaire.run();
 
-    generate_json_and_send_to_eiko(results);
+    //generate_json_and_send_to_eiko(results);
     println!("Results: {:?}", results);
 }
