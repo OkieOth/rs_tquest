@@ -11,3 +11,4 @@ categories = ["command-line-utilities"]
 
 
 [dependencies]
+builder_m4cro = "0.2.0"

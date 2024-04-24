@@ -1,6 +1,7 @@
 [workspace]
     resolver = "2"
+
 members = [
     "rs_tquest",
-    "examples/simple"
-]
+    "examples/simple",
+    "examples/ui_test"]
