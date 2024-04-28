@@ -14,6 +14,8 @@ use ratatui::{prelude::*,
 use ratatui::text::Text;
 use crate::questionaire::{QuestionAnswer, Questionaire};
 
+const ARROW_LEFT: &str = "←";
+const ARROW_RIGHT: &str = "→";
 
 
 pub enum UiState {
@@ -26,6 +28,7 @@ enum InputMode {
     Normal,
     Editing,
 }
+
 pub struct Ui<'a> {
     pub state: UiState,
     pub progress: f32,
@@ -35,6 +38,8 @@ pub struct Ui<'a> {
     pub input_mode: InputMode,
     pub cursor_position_by_char: usize,
     pub input: String,
+    pub max_input_diplay_len: usize,
+    pub input_display_start: usize,
 }
 
 impl<'a> Ui<'a>  {
@@ -47,6 +52,8 @@ impl<'a> Ui<'a>  {
             input_mode: InputMode::Editing,
             cursor_position_by_char: 0,
             input: "".to_string(),
+            max_input_diplay_len: 0,
+            input_display_start: 0,
         }   
     }
 
@@ -121,20 +128,45 @@ impl<'a> Ui<'a>  {
     }
 
     fn move_cursor_left(&mut self) {
-        let cursor_moved_left = self.cursor_position_by_char.saturating_sub(1);
-        self.cursor_position_by_char = self.clamp_cursor(cursor_moved_left);
+        if (self.cursor_position_by_char == 0) && (self.input_display_start > 0) {
+            if (self.input.chars().count() - self.input_display_start) > self.max_input_diplay_len  {
+                self.input_display_start = self.input_display_start.saturating_sub(1);
+            }
+        } else {
+            if (self.input.chars().count() - self.input_display_start) < self.max_input_diplay_len  {
+                self.input_display_start = 0
+            }
+            let cursor_moved_left = self.cursor_position_by_char.saturating_sub(1);
+            self.cursor_position_by_char = self.clamp_cursor(cursor_moved_left);
+        }
     }
 
     fn move_cursor_right(&mut self) {
+        let c = self.input.chars().count();
         let cursor_moved_right = self.cursor_position_by_char.saturating_add(1);
-        self.cursor_position_by_char = self.clamp_cursor(cursor_moved_right);
+        if (cursor_moved_right < self.max_input_diplay_len) {
+            if (self.input.chars().count() - self.input_display_start) >= cursor_moved_right {
+                self.cursor_position_by_char = self.clamp_cursor(cursor_moved_right);
+            }
+        } else {
+            if (self.input.chars().count() - self.input_display_start) >= self.max_input_diplay_len {
+                self.input_display_start = self.input_display_start.saturating_add(1);
+            }
+        }
+        // if (cursor_moved_right < self.max_input_diplay_len) && ((cursor_moved_right + self.input_display_start) <= c +1) {
+        //     self.cursor_position_by_char = self.clamp_cursor(cursor_moved_right);
+        // } else {
+        //     if (self.input.chars().count() - self.input_display_start) >= self.max_input_diplay_len {
+        //         self.input_display_start = self.input_display_start.saturating_add(1);
+        //     }
+        // }
     }
 
     fn byte_index(&mut self) -> usize {
         self.input
             .char_indices()
             .map(|(i, _)| i)
-            .nth(self.cursor_position_by_char)
+            .nth(self.cursor_position_by_char + self.input_display_start)
             .unwrap_or(self.input.len())
     }
 
@@ -168,7 +200,7 @@ impl<'a> Ui<'a>  {
     }
 
     fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
-        new_cursor_pos.clamp(0, self.input.chars().count())
+        new_cursor_pos.clamp(0, self.max_input_diplay_len)
     }
 
     fn reset_cursor(&mut self) {
@@ -178,6 +210,85 @@ impl<'a> Ui<'a>  {
     fn submit_message(&mut self) {
         self.input.clear();
         self.reset_cursor();
+    }
+
+    fn get_input_to_display(&mut self) -> String {
+        // TODO optimize the input clone
+        let c = self.input.chars().count();
+        if self.cursor_position_by_char == 0 {
+            if c > self.max_input_diplay_len {
+                let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
+                return format!("{}{}", ret, ARROW_RIGHT);
+            } else {
+                return self.input.clone();
+            }
+        } else {
+            if self.cursor_position_by_char >= self.max_input_diplay_len -1 {
+                if c >= self.max_input_diplay_len -1 {
+                    let ret: String = self.input.chars().skip(self.input_display_start).take(self.max_input_diplay_len - 2).collect();
+                    return format!("{}{}", ARROW_LEFT, ret);
+                    // 1234567890
+                } else {
+                    return self.input.clone();
+                }    
+            } else {
+                if c > self.max_input_diplay_len {
+                    if c - self.input_display_start > self.max_input_diplay_len {
+                        if self.input_display_start > 0 {
+                            let ret: String = self.input.chars().skip(self.input_display_start).take(self.max_input_diplay_len - 2).collect();
+                            return format!("{}{}{}", ARROW_LEFT, ret, ARROW_RIGHT);
+                        } else {
+                            let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
+                            return format!("{}{}", ret, ARROW_RIGHT);
+                        }
+                    } else {
+                        // if self.input_display_start > 0 {
+                        //     let ret: String = self.input.chars().skip(self.input_display_start).take(self.max_input_diplay_len - 2).collect();
+                        //     return format!("{}{}{}", ARROW_LEFT, ret, ARROW_RIGHT);
+                        // } else {
+                        //     let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
+                        //     return format!("{}{}", ret, ARROW_RIGHT);
+                        // }
+
+                        return "TODO-3".to_string();
+                    }
+                } else {
+                    return self.input.clone();
+                }    
+            }
+        }
+
+
+        // if c < self.max_input_diplay_len {
+        //     return self.input.clone();
+        // } else {
+        //     if self.cursor_position_by_char == 0 {
+        //         if  (c - self.input_display_start) > self.max_input_diplay_len {
+        //             let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
+        //             return format!("{}{}", ret, ARROW_RIGHT);
+        //         } else {
+        //             return self.input.clone();
+        //         }
+        //     } else {
+        //         if self.cursor_position_by_char >= self.max_input_diplay_len - 1 {
+        //             if  (c - self.input_display_start) <= self.max_input_diplay_len {
+        //                 let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
+        //                 return format!("{}{}", ARROW_LEFT, ret);
+        //             } else {
+        //                 let ret: String = self.input.chars().take(self.max_input_diplay_len - 2).collect();
+        //                 return format!("{}{}{}", ARROW_LEFT, ret, ARROW_RIGHT);
+        //             }
+        //         } else {
+        //             if  (c - self.input_display_start) <= self.max_input_diplay_len {
+        //                 let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
+        //                 return format!("{}{}", ARROW_LEFT, ret);
+        //             } else {
+        //                 let ret: String = self.input.chars().take(self.max_input_diplay_len - 2).collect();
+        //                 return format!("{}{}{}", ARROW_LEFT, ret, ARROW_RIGHT);
+        //             }
+        //         }
+        //     }
+        // }
     }
     
 }
@@ -199,6 +310,7 @@ fn render_app(frame: &mut Frame, ui: &mut Ui) {
     )
     .margin(0)
     .split(frame.size());
+    ui.max_input_diplay_len = (frame.size().width - 6) as usize;
 
     frame.render_widget(
         Block::new().borders(Borders::TOP).title(" I am a header "),
@@ -230,7 +342,9 @@ fn render_app(frame: &mut Frame, ui: &mut Ui) {
         vertical: 0,
         horizontal: 1,
     });
-    let input = Paragraph::new(ui.input.as_str())
+
+
+    let input = Paragraph::new(ui.get_input_to_display())
         .style(match ui.input_mode {
             InputMode::Normal => Style::default(),
             InputMode::Editing => Style::default().fg(Color::Yellow),
@@ -250,14 +364,9 @@ fn render_app(frame: &mut Frame, ui: &mut Ui) {
             {}
 
         InputMode::Editing => {
-            // Make the cursor visible and ask ratatui to put it at the specified coordinates after
-            // rendering
             #[allow(clippy::cast_possible_truncation)]
             frame.set_cursor(
-                // Draw the cursor at the current position in the input field.
-                // This position is can be controlled via the left and right arrow key
                 inner_answer.x + ui.cursor_position_by_char as u16 + 2,
-                // Move one line down, from the border to the input line
                 inner_answer.y + 1,
             );
         }
