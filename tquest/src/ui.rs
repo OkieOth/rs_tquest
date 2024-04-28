@@ -33,7 +33,7 @@ pub struct Ui<'a> {
     pub questionaire: &'a Questionaire,
     pub show_popup: bool,
     pub input_mode: InputMode,
-    pub cursor_position: usize,
+    pub cursor_position_by_char: usize,
     pub input: String,
 }
 
@@ -45,9 +45,9 @@ impl<'a> Ui<'a>  {
             questionaire: questionaire,
             show_popup: false,
             input_mode: InputMode::Editing,
-            cursor_position: 0,
+            cursor_position_by_char: 0,
             input: "".to_string(),
-        }
+        }   
     }
 
     pub fn run(&mut self) -> Result<Option<Vec<QuestionAnswer>>> {
@@ -121,29 +121,38 @@ impl<'a> Ui<'a>  {
     }
 
     fn move_cursor_left(&mut self) {
-        let cursor_moved_left = self.cursor_position.saturating_sub(1);
-        self.cursor_position = self.clamp_cursor(cursor_moved_left);
+        let cursor_moved_left = self.cursor_position_by_char.saturating_sub(1);
+        self.cursor_position_by_char = self.clamp_cursor(cursor_moved_left);
     }
 
     fn move_cursor_right(&mut self) {
-        let cursor_moved_right = self.cursor_position.saturating_add(1);
-        self.cursor_position = self.clamp_cursor(cursor_moved_right);
+        let cursor_moved_right = self.cursor_position_by_char.saturating_add(1);
+        self.cursor_position_by_char = self.clamp_cursor(cursor_moved_right);
     }
 
-    fn enter_char(&mut self, new_char: char) {
-        self.input.insert(self.cursor_position, new_char);
+    fn byte_index(&mut self) -> usize {
+        self.input
+            .char_indices()
+            .map(|(i, _)| i)
+            .nth(self.cursor_position_by_char)
+            .unwrap_or(self.input.len())
+    }
 
+
+    fn enter_char(&mut self, new_char: char) {
+        let index = self.byte_index();
+        self.input.insert(index, new_char);
         self.move_cursor_right();
     }
 
     fn delete_char(&mut self) {
-        let is_not_cursor_leftmost = self.cursor_position != 0;
+        let is_not_cursor_leftmost = self.cursor_position_by_char != 0;
         if is_not_cursor_leftmost {
             // Method "remove" is not used on the saved text for deleting the selected char.
             // Reason: Using remove on String works on bytes instead of the chars.
             // Using remove would require special care because of char boundaries.
 
-            let current_index = self.cursor_position;
+            let current_index = self.cursor_position_by_char;
             let from_left_to_current_index = current_index - 1;
 
             // Getting all characters before the selected character.
@@ -159,11 +168,11 @@ impl<'a> Ui<'a>  {
     }
 
     fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
-        new_cursor_pos.clamp(0, self.input.len())
+        new_cursor_pos.clamp(0, self.input.chars().count())
     }
 
     fn reset_cursor(&mut self) {
-        self.cursor_position = 0;
+        self.cursor_position_by_char = 0;
     }
 
     fn submit_message(&mut self) {
@@ -182,9 +191,9 @@ fn render_app(frame: &mut Frame, ui: &mut Ui) {
         Direction::Vertical,
         [
             Constraint::Length(1),
-            Constraint::Min(10),
-            Constraint::Percentage(80),
+            Constraint::Min(1),
             Constraint::Length(1),
+            Constraint::Length(3),
             Constraint::Length(3),
         ],
     )
@@ -201,41 +210,59 @@ fn render_app(frame: &mut Frame, ui: &mut Ui) {
 
     let block = Block::new()
         .borders(Borders::ALL)
-        .padding(Padding::horizontal(1))
+        .padding(Padding::uniform(1))
         .border_style(Style::new().gray().bold().italic())
         .title(" Question: ");
 
     let inner = main_layout[1].inner(&Margin {
-        vertical: 1,
+        vertical: 0,
         horizontal: 1,
     });
 
     frame.render_widget(question_txt.block(block), inner);
 
+    let navigation = Paragraph::new("(ENTER - to take answer, press 'q' to quit) ")
+    .right_aligned();
+    frame.render_widget(navigation, main_layout[2]);
 
 
-    let inner2 = main_layout[2].inner(&Margin {
-        vertical: 1,
+    let inner_answer = main_layout[3].inner(&Margin {
+        vertical: 0,
         horizontal: 1,
     });
-
-    // frame.render_widget(
-    //     Block::new().borders(Borders::NONE).title(" Your Answer: "),
-    //     inner2,
-    // );
-
-
     let input = Paragraph::new(ui.input.as_str())
         .style(match ui.input_mode {
             InputMode::Normal => Style::default(),
             InputMode::Editing => Style::default().fg(Color::Yellow),
         })
-        .block(Block::default().borders(Borders::ALL).title("Input"));
-    frame.render_widget(input, inner2);
+        .block(Block::default()
+            .border_style(
+                Style::new()
+                    .bold()
+                    .italic())
+            .borders(Borders::ALL).title("Answer: ")
+            .padding(Padding::horizontal(1)));
+    frame.render_widget(input, inner_answer);
 
-    let navigation = Paragraph::new("(ENTER - to take answer, press 'q' to quit) ")
-    .right_aligned();
-    frame.render_widget(navigation, main_layout[3]);
+    match ui.input_mode {
+        InputMode::Normal =>
+            // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
+            {}
+
+        InputMode::Editing => {
+            // Make the cursor visible and ask ratatui to put it at the specified coordinates after
+            // rendering
+            #[allow(clippy::cast_possible_truncation)]
+            frame.set_cursor(
+                // Draw the cursor at the current position in the input field.
+                // This position is can be controlled via the left and right arrow key
+                inner_answer.x + ui.cursor_position_by_char as u16 + 2,
+                // Move one line down, from the border to the input line
+                inner_answer.y + 1,
+            );
+        }
+    }
+
 
     if ui.show_popup {
         let help_txt = Paragraph::new("This is a quite long help text. I wonder how this will be rendered and if all parts of the text will be visible. :-/");
@@ -248,7 +275,9 @@ fn render_app(frame: &mut Frame, ui: &mut Ui) {
     }
 
     let line_gauge = LineGauge::default()
-        .block(Block::default().borders(Borders::ALL).title(" Progress "))
+        .block(Block::new()
+            .borders(Borders::ALL)
+            .title(" Progress "))
         .gauge_style(
         Style::default()
             .fg(Color::Yellow)
@@ -257,11 +286,12 @@ fn render_app(frame: &mut Frame, ui: &mut Ui) {
     )
     .line_set(symbols::line::THICK)
     .ratio(0.8);
-    frame.render_widget(line_gauge, main_layout[4]);
-    // frame.render_widget(
-    //     Block::new().borders(Borders::TOP).title("Progress"),
-    //     main_layout[2],
-    // );
+    let inner_gauge = main_layout[4].inner(&Margin {
+        vertical: 0,
+        horizontal: 1,
+    });
+
+    frame.render_widget(line_gauge, inner_gauge);
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
