@@ -215,7 +215,17 @@ impl<'a> Ui<'a>  {
     fn get_input_to_display(&mut self) -> String {
         // TODO optimize the input clone
         let c = self.input.chars().count();
+        // if self.cursor_position_by_char == 0 {
+        //     // cursor is leftmost
+        //     if c < self.max_input_diplay_len -1 {
+        //         return self.input.clone();
+        //     } else {
+        //         let ret: String = self.input.chars().skip(self.input_display_start).take(self.max_input_diplay_len - 3).collect();
+        //         return format!("{}{}", ARROW_LEFT, ret);
+        //     }
+        // }
         if self.cursor_position_by_char == 0 {
+            // cursor is leftmost
             if c > self.max_input_diplay_len {
                 let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
                 return format!("{}{}", ret, ARROW_RIGHT);
@@ -224,8 +234,9 @@ impl<'a> Ui<'a>  {
             }
         } else {
             if self.cursor_position_by_char >= self.max_input_diplay_len -1 {
+                // cursor is rightmost
                 if c >= self.max_input_diplay_len -1 {
-                    let ret: String = self.input.chars().skip(self.input_display_start).take(self.max_input_diplay_len - 2).collect();
+                    let ret: String = self.input.chars().skip(self.input_display_start+1).take(self.max_input_diplay_len - 2).collect();
                     return format!("{}{}", ARROW_LEFT, ret);
                     // 1234567890
                 } else {
