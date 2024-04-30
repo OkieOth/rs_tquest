@@ -129,12 +129,13 @@ impl<'a> Ui<'a>  {
 
     fn move_cursor_left(&mut self) {
         if (self.cursor_position_by_char == 0) && (self.input_display_start > 0) {
-            if (self.input.chars().count() - self.input_display_start) > self.max_input_diplay_len  {
+            //if (self.input.chars().count() - self.input_display_start) > self.max_input_diplay_len  {
                 self.input_display_start = self.input_display_start.saturating_sub(1);
-            }
+            //}
         } else {
             if (self.input.chars().count() - self.input_display_start) < self.max_input_diplay_len  {
-                self.input_display_start = 0
+                self.input_display_start = self.input_display_start.saturating_sub(1);
+                //self.input_display_start = 0
             }
             let cursor_moved_left = self.cursor_position_by_char.saturating_sub(1);
             self.cursor_position_by_char = self.clamp_cursor(cursor_moved_left);
@@ -144,7 +145,7 @@ impl<'a> Ui<'a>  {
     fn move_cursor_right(&mut self) {
         let c = self.input.chars().count();
         let cursor_moved_right = self.cursor_position_by_char.saturating_add(1);
-        if (cursor_moved_right < self.max_input_diplay_len) {
+        if cursor_moved_right < self.max_input_diplay_len {
             if (self.input.chars().count() - self.input_display_start) >= cursor_moved_right {
                 self.cursor_position_by_char = self.clamp_cursor(cursor_moved_right);
             }
@@ -153,13 +154,6 @@ impl<'a> Ui<'a>  {
                 self.input_display_start = self.input_display_start.saturating_add(1);
             }
         }
-        // if (cursor_moved_right < self.max_input_diplay_len) && ((cursor_moved_right + self.input_display_start) <= c +1) {
-        //     self.cursor_position_by_char = self.clamp_cursor(cursor_moved_right);
-        // } else {
-        //     if (self.input.chars().count() - self.input_display_start) >= self.max_input_diplay_len {
-        //         self.input_display_start = self.input_display_start.saturating_add(1);
-        //     }
-        // }
     }
 
     fn byte_index(&mut self) -> usize {
@@ -212,94 +206,29 @@ impl<'a> Ui<'a>  {
         self.reset_cursor();
     }
 
-    fn get_input_to_display(&mut self) -> String {
-        // TODO optimize the input clone
+    fn get_scroll_info(&mut self) -> String {
         let c = self.input.chars().count();
-        // if self.cursor_position_by_char == 0 {
-        //     // cursor is leftmost
-        //     if c < self.max_input_diplay_len -1 {
-        //         return self.input.clone();
-        //     } else {
-        //         let ret: String = self.input.chars().skip(self.input_display_start).take(self.max_input_diplay_len - 3).collect();
-        //         return format!("{}{}", ARROW_LEFT, ret);
-        //     }
-        // }
-        if self.cursor_position_by_char == 0 {
-            // cursor is leftmost
-            if c > self.max_input_diplay_len {
-                let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
-                return format!("{}{}", ret, ARROW_RIGHT);
-            } else {
-                return self.input.clone();
-            }
+        let s = " ".repeat(self.max_input_diplay_len - 2);
+        let left = if self.input_display_start > 0 {
+            ARROW_LEFT
         } else {
-            if self.cursor_position_by_char >= self.max_input_diplay_len -1 {
-                // cursor is rightmost
-                if c >= self.max_input_diplay_len -1 {
-                    let ret: String = self.input.chars().skip(self.input_display_start+1).take(self.max_input_diplay_len - 2).collect();
-                    return format!("{}{}", ARROW_LEFT, ret);
-                    // 1234567890
-                } else {
-                    return self.input.clone();
-                }    
-            } else {
-                if c > self.max_input_diplay_len {
-                    if c - self.input_display_start > self.max_input_diplay_len {
-                        if self.input_display_start > 0 {
-                            let ret: String = self.input.chars().skip(self.input_display_start).take(self.max_input_diplay_len - 2).collect();
-                            return format!("{}{}{}", ARROW_LEFT, ret, ARROW_RIGHT);
-                        } else {
-                            let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
-                            return format!("{}{}", ret, ARROW_RIGHT);
-                        }
-                    } else {
-                        // if self.input_display_start > 0 {
-                        //     let ret: String = self.input.chars().skip(self.input_display_start).take(self.max_input_diplay_len - 2).collect();
-                        //     return format!("{}{}{}", ARROW_LEFT, ret, ARROW_RIGHT);
-                        // } else {
-                        //     let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
-                        //     return format!("{}{}", ret, ARROW_RIGHT);
-                        // }
+            " "
+        };
+        let right = if (c - self.input_display_start) > self.max_input_diplay_len - 1 {
+            ARROW_RIGHT
+        } else {
+            " "
+        };
+        format!("{}{}{}", left, s, right)
+    }
 
-                        return "TODO-3".to_string();
-                    }
-                } else {
-                    return self.input.clone();
-                }    
-            }
+    fn get_input_to_display(&mut self) -> String {
+        let c = self.input.chars().count();
+        if c - self.input_display_start > self.max_input_diplay_len {
+            return self.input.chars().skip(self.input_display_start).take(self.max_input_diplay_len - 1).collect();
+        } else {
+            return self.input.chars().skip(self.input_display_start).take(c - self.input_display_start).collect();
         }
-
-
-        // if c < self.max_input_diplay_len {
-        //     return self.input.clone();
-        // } else {
-        //     if self.cursor_position_by_char == 0 {
-        //         if  (c - self.input_display_start) > self.max_input_diplay_len {
-        //             let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
-        //             return format!("{}{}", ret, ARROW_RIGHT);
-        //         } else {
-        //             return self.input.clone();
-        //         }
-        //     } else {
-        //         if self.cursor_position_by_char >= self.max_input_diplay_len - 1 {
-        //             if  (c - self.input_display_start) <= self.max_input_diplay_len {
-        //                 let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
-        //                 return format!("{}{}", ARROW_LEFT, ret);
-        //             } else {
-        //                 let ret: String = self.input.chars().take(self.max_input_diplay_len - 2).collect();
-        //                 return format!("{}{}{}", ARROW_LEFT, ret, ARROW_RIGHT);
-        //             }
-        //         } else {
-        //             if  (c - self.input_display_start) <= self.max_input_diplay_len {
-        //                 let ret: String = self.input.chars().take(self.max_input_diplay_len - 1).collect();
-        //                 return format!("{}{}", ARROW_LEFT, ret);
-        //             } else {
-        //                 let ret: String = self.input.chars().take(self.max_input_diplay_len - 2).collect();
-        //                 return format!("{}{}{}", ARROW_LEFT, ret, ARROW_RIGHT);
-        //             }
-        //         }
-        //     }
-        // }
     }
     
 }
@@ -315,7 +244,7 @@ fn render_app(frame: &mut Frame, ui: &mut Ui) {
             Constraint::Length(1),
             Constraint::Min(1),
             Constraint::Length(1),
-            Constraint::Length(3),
+            Constraint::Length(4),
             Constraint::Length(3),
         ],
     )
@@ -355,7 +284,9 @@ fn render_app(frame: &mut Frame, ui: &mut Ui) {
     });
 
 
-    let input = Paragraph::new(ui.get_input_to_display())
+    let mut text= Text::from(ui.get_input_to_display());
+    text.push_line(ui.get_scroll_info());
+    let input = Paragraph::new(text)
         .style(match ui.input_mode {
             InputMode::Normal => Style::default(),
             InputMode::Editing => Style::default().fg(Color::Yellow),
