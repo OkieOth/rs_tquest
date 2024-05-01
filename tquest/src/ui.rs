@@ -18,22 +18,27 @@ const ARROW_LEFT: &str = "←";
 const ARROW_RIGHT: &str = "→";
 
 
+#[derive(Default)]
 pub enum UiState {
     Help,
+    #[default]
     Question,
     Scrolling,
 }
 
-enum InputMode {
+#[derive(Default)]
+pub enum InputMode {
     Normal,
+    #[default]
     Editing,
 }
 
+#[derive(Default)]
 pub struct Ui<'a> {
     pub state: UiState,
     pub progress: f32,
 
-    pub questionaire: &'a Questionaire,
+    pub questionaire: Option<&'a Questionaire>,
     pub show_popup: bool,
     pub input_mode: InputMode,
     pub cursor_position_by_char: usize,
@@ -47,7 +52,7 @@ impl<'a> Ui<'a>  {
         Self {
             state: UiState::Question,
             progress: 0.0,
-            questionaire: questionaire,
+            questionaire: Some(questionaire),
             show_popup: false,
             input_mode: InputMode::Editing,
             cursor_position_by_char: 0,
@@ -143,7 +148,6 @@ impl<'a> Ui<'a>  {
     }
 
     fn move_cursor_right(&mut self) {
-        let c = self.input.chars().count();
         let cursor_moved_right = self.cursor_position_by_char.saturating_add(1);
         if cursor_moved_right < self.max_input_diplay_len {
             if (self.input.chars().count() - self.input_display_start) >= cursor_moved_right {
@@ -174,20 +178,13 @@ impl<'a> Ui<'a>  {
     fn delete_char(&mut self) {
         let is_not_cursor_leftmost = self.cursor_position_by_char != 0;
         if is_not_cursor_leftmost {
-            // Method "remove" is not used on the saved text for deleting the selected char.
-            // Reason: Using remove on String works on bytes instead of the chars.
-            // Using remove would require special care because of char boundaries.
 
             let current_index = self.cursor_position_by_char;
             let from_left_to_current_index = current_index - 1;
 
-            // Getting all characters before the selected character.
             let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
-            // Getting all characters after selected character.
             let after_char_to_delete = self.input.chars().skip(current_index);
 
-            // Put all characters together except the selected one.
-            // By leaving the selected one out, it is forgotten and therefore deleted.
             self.input = before_char_to_delete.chain(after_char_to_delete).collect();
             self.move_cursor_left();
         }
@@ -219,7 +216,14 @@ impl<'a> Ui<'a>  {
         } else {
             " "
         };
-        format!("{}{}{}", left, s, right)
+        let ret = format!("{}{}{}", left, s, right);
+
+        // // debug - start
+        // let max_input_disply_len = self.max_input_diplay_len.to_string();
+        // let debug_str = " ".repeat(max_input_disply_len.len());
+        // let ret = ret.replacen(&debug_str, &max_input_disply_len, 1);
+        // // debug - end
+        ret
     }
 
     fn get_input_to_display(&mut self) -> String {
@@ -236,8 +240,6 @@ impl<'a> Ui<'a>  {
 
 
 fn render_app(frame: &mut Frame, ui: &mut Ui) {
-
-
     let main_layout = Layout::new(
         Direction::Vertical,
         [
@@ -314,7 +316,6 @@ fn render_app(frame: &mut Frame, ui: &mut Ui) {
         }
     }
 
-
     if ui.show_popup {
         let help_txt = Paragraph::new("This is a quite long help text. I wonder how this will be rendered and if all parts of the text will be visible. :-/");
 
@@ -359,4 +360,34 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         Constraint::Percentage((100 - percent_x) / 2),
     ])
     .split(popup_layout[1])[1]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_answer_scrolling_01() {
+        let test_input = "1234567890".to_string();
+        let mut ui = super::Ui::default();
+        ui.max_input_diplay_len = 20;
+        ui.input = test_input.clone();
+        assert_eq!(test_input.clone(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,0);
+        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    }
+
+    #[test]
+    fn test_answer_scrolling_02() {
+        let test_input = "123456789012345678901234567890".to_string();
+        let mut ui = super::Ui::default();
+        ui.max_input_diplay_len = 20;
+        ui.input = test_input.clone();
+        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,0);
+        let scroll_info = format!("{}{}"," ".repeat(19), ARROW_RIGHT);
+        assert_eq!(scroll_info, ui.get_scroll_info());
+    }
 }
