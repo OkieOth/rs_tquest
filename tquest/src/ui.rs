@@ -376,6 +376,85 @@ mod tests {
         assert_eq!(ui.input_display_start,0);
         assert_eq!(ui.cursor_position_by_char,0);
         assert_eq!(" ".repeat(20),ui.get_scroll_info());
+
+        ui.move_cursor_left();
+        assert_eq!(test_input.clone(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,0);
+        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+
+        ui.move_cursor_right();
+        assert_eq!(test_input.clone(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,1);
+        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+
+        ui.move_cursor_left();
+        assert_eq!(test_input.clone(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,0);
+        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+
+        ui.move_cursor_right();
+        assert_eq!(test_input.clone(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,1);
+        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+
+        ui.move_cursor_right();
+        ui.move_cursor_right();
+        ui.move_cursor_right();
+        ui.move_cursor_right();
+        ui.move_cursor_right();
+        ui.move_cursor_right();
+        ui.move_cursor_right();
+        assert_eq!(test_input.clone(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,8);
+        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+
+        ui.move_cursor_right();
+        ui.move_cursor_right();
+        assert_eq!(test_input.clone(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,10);
+        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+
+        ui.move_cursor_right();
+        ui.move_cursor_right();
+        assert_eq!(test_input.clone(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,10);
+        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+
+        ui.move_cursor_left();
+        ui.move_cursor_left();
+        assert_eq!(test_input.clone(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,8);
+        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+
+        ui.move_cursor_left();
+        ui.move_cursor_left();
+        ui.move_cursor_left();
+        ui.move_cursor_left();
+        ui.move_cursor_left();
+        ui.move_cursor_left();
+        ui.move_cursor_left();
+        ui.move_cursor_left();
+        assert_eq!(test_input.clone(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,0);
+        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+
+        ui.move_cursor_left();
+        ui.move_cursor_left();
+        ui.move_cursor_left();
+        assert_eq!(test_input.clone(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,0);
+        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+
     }
 
     #[test]
