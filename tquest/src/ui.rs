@@ -467,6 +467,38 @@ mod tests {
         assert_eq!(ui.input_display_start,0);
         assert_eq!(ui.cursor_position_by_char,0);
         let scroll_info = format!("{}{}"," ".repeat(19), ARROW_RIGHT);
-        assert_eq!(scroll_info, ui.get_scroll_info());
+        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+
+        ui.move_cursor_left();
+        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,0);
+        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+
+        ui.move_cursor_right();
+        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,1);
+        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+
+        ui.move_cursor_left();
+        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,0);
+        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+
+        ui.move_cursor_right();
+        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,1);
+        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+
+        (0..18).for_each(|_| {
+            ui.move_cursor_right();
+        });
+        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,0);
+        assert_eq!(ui.cursor_position_by_char,19);
+        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
     }
 }
