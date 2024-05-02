@@ -89,7 +89,10 @@ impl<'a> Ui<'a>  {
                             self.enter_char(to_insert);
                         }
                         KeyCode::Backspace => {
-                            self.delete_char();
+                            self.delete_char_before();
+                        }
+                        KeyCode::Delete => {
+                            self.delete_char_under();
                         }
                         KeyCode::Left => {
                             self.move_cursor_left();
@@ -175,11 +178,11 @@ impl<'a> Ui<'a>  {
         self.move_cursor_right();
     }
 
-    fn delete_char(&mut self) {
+    fn delete_char_before(&mut self) {
         let is_not_cursor_leftmost = self.cursor_position_by_char != 0;
         if is_not_cursor_leftmost {
 
-            let current_index = self.cursor_position_by_char;
+            let current_index = self.input_display_start + self.cursor_position_by_char;
             let from_left_to_current_index = current_index - 1;
 
             let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
@@ -189,6 +192,21 @@ impl<'a> Ui<'a>  {
             self.move_cursor_left();
         }
     }
+
+    fn delete_char_under(&mut self) {
+        let is_not_cursor_rightmost = self.cursor_position_by_char < (self.input.chars().count() - self.input_display_start);
+        if is_not_cursor_rightmost {
+
+            let current_index = self.input_display_start + self.cursor_position_by_char;
+            let from_left_to_current_index = current_index;
+
+            let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
+            let after_char_to_delete = self.input.chars().skip(current_index + 1);
+
+            self.input = before_char_to_delete.chain(after_char_to_delete).collect();
+        }
+    }
+
 
     fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
         new_cursor_pos.clamp(0, self.max_input_diplay_len)
@@ -401,13 +419,9 @@ mod tests {
         assert_eq!(ui.cursor_position_by_char,1);
         assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        ui.move_cursor_right();
-        ui.move_cursor_right();
-        ui.move_cursor_right();
-        ui.move_cursor_right();
-        ui.move_cursor_right();
-        ui.move_cursor_right();
-        ui.move_cursor_right();
+        (0..7).for_each(|_| {
+            ui.move_cursor_right();
+        });
         assert_eq!(test_input.clone(),ui.get_input_to_display());
         assert_eq!(ui.input_display_start,0);
         assert_eq!(ui.cursor_position_by_char,8);
@@ -434,14 +448,9 @@ mod tests {
         assert_eq!(ui.cursor_position_by_char,8);
         assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        ui.move_cursor_left();
-        ui.move_cursor_left();
-        ui.move_cursor_left();
-        ui.move_cursor_left();
-        ui.move_cursor_left();
-        ui.move_cursor_left();
-        ui.move_cursor_left();
-        ui.move_cursor_left();
+        (0..8).for_each(|_| {
+            ui.move_cursor_left();
+        });
         assert_eq!(test_input.clone(),ui.get_input_to_display());
         assert_eq!(ui.input_display_start,0);
         assert_eq!(ui.cursor_position_by_char,0);
@@ -500,5 +509,49 @@ mod tests {
         assert_eq!(ui.input_display_start,0);
         assert_eq!(ui.cursor_position_by_char,19);
         assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+
+        ui.move_cursor_right();
+        assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,1);
+        assert_eq!(ui.cursor_position_by_char,19);
+        let scroll_info2 = format!("{}{}{}", ARROW_LEFT, " ".repeat(18), ARROW_RIGHT);
+        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+
+        ui.move_cursor_left();
+        assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,1);
+        assert_eq!(ui.cursor_position_by_char,18);
+        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+
+        ui.move_cursor_left();
+        assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,1);
+        assert_eq!(ui.cursor_position_by_char,17);
+        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+
+        (0..10).for_each(|_| {
+            ui.move_cursor_left();
+        });
+
+        assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,1);
+        assert_eq!(ui.cursor_position_by_char,7);
+        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+
+        ui.enter_char('ß');
+        assert_eq!("2345678ß90123456789".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,1);
+        assert_eq!(ui.cursor_position_by_char,8);
+        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+
+        (0..3).for_each(|_| {
+            ui.move_cursor_right();
+        });
+        ui.delete_char_before();
+        assert_eq!("2345678ß91234567890".to_string(),ui.get_input_to_display());
+        assert_eq!(ui.input_display_start,1);
+        assert_eq!(ui.cursor_position_by_char,10);
+        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+
     }
 }
