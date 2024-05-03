@@ -1,27 +1,26 @@
 use tquest::{Questionaire, QuestionaireBuilder, StringEntry};
 
-fn question_01(builder: &mut QuestionaireBuilder, level: u8) {
+fn question_01(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
+    builder.add_string_question(level, id, "what's your name?", None, None);
 }
 
-fn question_02(builder: &mut QuestionaireBuilder, level: u8) {
+fn question_02(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
+    builder.add_string_question(level, 
+        id,
+        "What's your date of birth?", 
+        Some("Provide the date of birth in YYYY-MM-DD format"), 
+    Some(StringEntry::builder()
+                    .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                    .build().unwrap()));
 }
 
 
 fn build_questionaire() -> Questionaire {
     let mut builder = Questionaire::builder();
-    // question_01(&mut builder, 0);
-    // question_02(&mut builder, 0);
+    question_01(&mut builder, 0, "id1");
+    question_02(&mut builder, 0, "id2");
+    builder.build()
 
-    builder.add_string_question(0,"id1", "what's your name?", None, None)
-    .add_string_question(0, 
-        "id2",
-        "bla", 
-        Some("help bla"), 
-    Some(StringEntry::builder()
-                    .max_length(10)
-                    .min_length(1)
-                    .build().unwrap()))
-    .build()
 
 
     // .add_string_question("2", "What's your date of birth?", None, 0)
@@ -38,6 +37,7 @@ fn build_questionaire() -> Questionaire {
     //     .add_string_question("13","What was your start date?", 1)
     //     .add_string_question("14","What was your end date?", 1)
     // .add_proceed_question("15","Should we store the answers?", "", 0)
+    // .build()
 
 }
 
