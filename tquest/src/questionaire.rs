@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::cell::RefCell;
 
@@ -58,8 +59,6 @@ pub struct QuestionEntry {
     pub help_text: Option<String>,
     pub entry_type: EntryType,
     pub id: String,
-    pub prev: Option<Rc<RefCell<QuestionEntry>>>,
-    pub next: Option<Rc<RefCell<QuestionEntry>>>,
 }
 
 pub struct QuestionaireResults {
@@ -68,7 +67,8 @@ pub struct QuestionaireResults {
 
 #[derive(Debug, Default)]
 pub struct Questionaire {
-    pub questions: Vec<Rc<RefCell<QuestionEntry>>>,
+    /// Hashmap of level to list of questions per level
+    pub questions: HashMap<u8, Vec<Rc<RefCell<QuestionEntry>>>>,
 }
 
 impl Questionaire {
@@ -83,7 +83,7 @@ impl Questionaire {
 
 #[derive(Debug, Default)]
 pub struct QuestionaireBuilder {
-    pub questions: Vec<QuestionEntry>,
+    pub questions: HashMap<u8, Vec<QuestionEntry>>,
 }
 
 impl QuestionaireBuilder {
@@ -144,14 +144,25 @@ impl QuestionaireBuilder {
         level: u8,
         id: &str,
         text: &str) -> &mut Self {
+        // self.questions.push(QuestionEntry {
+        //     query_text: text.to_string(),
+        //     help_text: None,
+        //     entry_type: EntryType::InfoTxt,
+        //     id: id.to_string(),
+        // });
         self
     }
 
     pub fn build(&self) -> Questionaire {
-        Questionaire {
-            questions: self.questions.iter()
-            .map(|q| Rc::new(RefCell::new(q.clone()))).collect(),
-        }
+        let mut q = Questionaire::default();
+        for (key, val) in self.questions.iter() {
+            let mut v: Vec<Rc<RefCell<QuestionEntry>>> = Vec::new();
+            for e in val.iter() {
+                v.push(Rc::new(RefCell::new(e.clone())));
+            }
+            q.questions.insert(*key, v);
+        };
+        q
     }
 }
 
