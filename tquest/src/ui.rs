@@ -12,7 +12,7 @@ use crossterm::{
 use ratatui::{prelude::*, 
      widgets::{Block, Borders, LineGauge, Padding, Paragraph, Wrap, Clear}};
 use ratatui::text::Text;
-use crate::questionaire::{QuestionAnswer, Questionaire};
+use crate::{questionaire::{QuestionAnswer, Questionaire}, SubBlock};
 
 const ARROW_LEFT: &str = "←";
 const ARROW_RIGHT: &str = "→";
@@ -52,7 +52,7 @@ impl<'a> Ui<'a>  {
         Self {
             state: UiState::Question,
             progress: 0.0,
-            questionaire: Some(questionaire),
+            questionaire: questionaire,
             show_popup: false,
             input_mode: InputMode::Editing,
             cursor_position_by_char: 0,
@@ -69,7 +69,28 @@ impl<'a> Ui<'a>  {
         Ok(None)
     }
 
+    fn show_start_screen() -> Result<bool> {
+        // TODO
+        Ok(true)
+    }
+
+    fn display_sub_block(&mut self, block: &SubBlock, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<bool> {
+        if show_start_screen() {
+            
+
+            if show_end_screen() {
+                
+            }
+        }
+        Ok(())
+    }
+
+
     fn process_questionaire(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
+        self.display_sub_block(&self.questionaire.expect("uninitialized questionaire").init_block, terminal)
+    }
+
+    fn display_current_step(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
         loop {
             terminal.draw(|f| render_app(f, self))?;
             if let Event::Key(key) = event::read()? {
