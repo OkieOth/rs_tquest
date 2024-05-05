@@ -6,7 +6,7 @@ use anyhow::{Result};
 
 use crate::Ui;
 
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Clone)]
 pub struct StringEntry {
     pub default_value: Option<String>,
     pub reqexp: Option<String>,
@@ -16,32 +16,32 @@ pub struct StringEntry {
 
 
 
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Clone)]
 pub struct IntEntry {
     pub default_value: Option<i32>,
     pub max: Option<i32>,
     pub min: Option<i32>,
 }
 
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Clone)]
 pub struct FloatEntry {
     pub default_value: Option<i32>,
     pub max: Option<f32>,
     pub min: Option<f32>,
 }
 
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Clone)]
 pub struct BoolEntry {
     pub default_value: Option<bool>,
 }
 
-#[derive(Debug, Builder)]
+#[derive(Debug, Builder, Clone)]
 pub struct OptionEntry {
     pub default_value: Option<u32>,
     pub options: Vec<String>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum EntryType {
     String(StringEntry),
     Int(IntEntry),
@@ -52,7 +52,7 @@ pub enum EntryType {
     InfoTxt,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct QuestionEntry {
     pub query_text: String,
     pub help_text: Option<String>,
@@ -148,8 +148,10 @@ impl QuestionaireBuilder {
     }
 
     pub fn build(&self) -> Questionaire {
-        // TODO
-        Questionaire::default()
+        Questionaire {
+            questions: self.questions.iter()
+            .map(|q| Rc::new(RefCell::new(q.clone()))).collect(),
+        }
     }
 }
 
