@@ -128,9 +128,23 @@ fn question_15(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
         None);
 }
 
+fn info_txt_01(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
+    builder.add_info_text(
+        level,
+        id,
+        "In the following questionaire you will be asked about your family and things?");
+}
+
+fn info_txt_02(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
+    builder.add_info_text(
+        level,
+        id,
+        "Your input will be now processed and stored");
+}
 
 fn build_questionaire() -> Questionaire {
     let mut builder = Questionaire::builder();
+    info_txt_01(&mut builder, 0, "id0");
     question_01(&mut builder, 0, "id1");
     question_02(&mut builder, 0, "id2");
     question_03(&mut builder, 0, "id3");
@@ -144,8 +158,9 @@ fn build_questionaire() -> Questionaire {
         question_11(&mut builder, 1, "id11");
         question_12(&mut builder, 1, "id12");
         question_13(&mut builder, 1, "id13");
-        question_14(&mut builder, 1, "id13");
-    question_14(&mut builder, 0, "id14");
+        question_14(&mut builder, 1, "id14");
+    question_15(&mut builder, 0, "id15");
+    info_txt_02(&mut builder, 0, "id16");
     builder.build()
 
 }

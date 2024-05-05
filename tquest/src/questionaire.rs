@@ -37,6 +37,7 @@ pub struct BoolEntry {
 
 #[derive(Debug, Builder)]
 pub struct OptionEntry {
+    pub default_value: Option<u32>,
     pub options: Vec<String>,
 }
 
@@ -47,7 +48,7 @@ pub enum EntryType {
     Float(FloatEntry),
     Bool(BoolEntry),
     Option(OptionEntry),
-    ProceedQuery,
+    ProceedQuery(u32),
     InfoTxt,
 }
 
