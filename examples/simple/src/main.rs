@@ -1,168 +1,203 @@
-use tquest::{Questionaire, QuestionaireBuilder, StringEntry};
+use tquest::{Questionaire, QuestionEntry, EntryType,QuestionaireEntry, 
+    StringEntry, OptionEntry, SubBlock};
 
-fn question_01(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_string_question(level, id, "what's your name?", None, None);
+
+fn get_brother_questions() -> Vec<QuestionaireEntry> {
+    vec![
+        QuestionaireEntry::Question (
+            QuestionEntry::builder()
+            .query_text("What's his name?")
+            .entry_type(EntryType::String(
+                StringEntry::builder()
+                .min_length(2)
+                .max_length(50)
+                .build().unwrap()
+            ))
+            .build().unwrap(),
+        ),
+        QuestionaireEntry::Question (
+            QuestionEntry::builder()
+            .query_text("What's his date of birth?")
+            .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
+            .entry_type(EntryType::String(
+                StringEntry::builder()
+                .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                .build().unwrap()
+            ))
+            .build().unwrap()
+        ),
+    ]
 }
 
-fn question_02(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_string_question(level, 
-        id,
-        "What's your date of birth?", 
-        Some("Provide the date of birth in YYYY-MM-DD format"), 
-    Some(StringEntry::builder()
-                    .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                    .build().unwrap()));
+fn get_sister_questions() -> Vec<QuestionaireEntry> {
+    vec![
+        QuestionaireEntry::Question (
+            QuestionEntry::builder()
+            .query_text("What's his name?")
+            .entry_type(EntryType::String(
+                StringEntry::builder()
+                .min_length(2)
+                .max_length(50)
+                .build().unwrap()
+            ))
+            .build().unwrap(),
+        ),
+        QuestionaireEntry::Question (
+            QuestionEntry::builder()
+            .query_text("What's his date of birth?")
+            .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
+            .entry_type(EntryType::String(
+                StringEntry::builder()
+                .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                .build().unwrap()
+            ))
+            .build().unwrap()
+        ),
+    ]
 }
 
-fn question_03(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_proceed_question(
-        level,
-        id,
-        "Do you have brothers or sisters?", 
-        Some("Do you have more brothers and sisters?"));
+fn get_sibling_entries() -> Vec<QuestionaireEntry> {
+    vec![
+        QuestionaireEntry::Block(
+            SubBlock::builder()
+            .start_text("Do you have a sister?")
+            .end_text("Do you have another sister?".to_string())
+            .entries(get_sister_questions())
+            .build().unwrap()
+        ),
+        QuestionaireEntry::Block(
+            SubBlock::builder()
+            .start_text("Do you have a brother?")
+            .end_text("Do you have another brother?".to_string())
+            .entries(get_brother_questions())
+            .build().unwrap()
+        )
+    ]
 }
 
-fn question_04(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_proceed_question(
-        level,
-        id,
-        "Do you have a brother?", 
-        Some("Do you have another brother?"));
+fn get_job_end_entries() -> Vec<QuestionaireEntry> {
+    vec![
+        QuestionaireEntry::Question(
+            QuestionEntry::builder()
+            .query_text("What was your end date there?")
+            .help_text("Provide the year and optional month in 'YYYY-MM' or 'YYYY' format.".to_string())
+            .entry_type(EntryType::String(
+                StringEntry::builder()
+                .min_length(2)
+                .max_length(100)
+                .build().unwrap()
+            ))
+            .build().unwrap()
+        ),
+        QuestionaireEntry::Question(
+            QuestionEntry::builder()
+            .query_text("Why did you leave the job?")
+            .help_text("Provide the main reason for leaving".to_string())
+            .entry_type(EntryType::Option(
+                OptionEntry::builder()
+                .options(vec![
+                    "I left by my own".to_string(),
+                    "I was laid off".to_string(),
+                    "Other reason".to_string(),
+                ])
+                .build().unwrap()
+            ))
+            .build().unwrap()
+        )
+    ]
 }
 
-fn question_05(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_string_question(level, id, 
-        "what's the name of your brother?", None, None);
-}
-
-fn question_06(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_string_question(level, 
-        id,
-        "What's his date of birth?", 
-        Some("Provide the date of birth in YYYY-MM-DD format"), 
-    Some(StringEntry::builder()
-                    .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                    .build().unwrap()));
-}
-
-fn question_07(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_proceed_question(
-        level,
-        id,
-        "Do you have a sister?", 
-        Some("Do you have another sister?"));
-}
-
-fn question_08(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_string_question(level, id, 
-        "what's the name of your sister?", None, None);
-}
-
-fn question_09(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_string_question(level, 
-        id,
-        "What's her date of birth?", 
-        Some("Provide the date of birth in YYYY-MM-DD format"), 
-    Some(StringEntry::builder()
-                    .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                    .build().unwrap()));
-}
-
-fn question_10(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_proceed_question(
-        level,
-        id,
-        "Have you already worked in a job?", 
-        Some("Have you worked in another job?"));
-}
-
-fn question_11(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_string_question(level, 
-        id,
-        "What was the name of the company you worked for?", 
-        None, 
-    Some(StringEntry::builder()
-                    .min_length(2)
-                    .max_length(200)
-                    .build().unwrap()));
-}
-
-fn question_12(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_string_question(level, 
-        id,
-        "What was your job title?", 
-        None, 
-    Some(StringEntry::builder()
-                    .min_length(2)
-                    .max_length(200)
-                    .build().unwrap()));
-}
-
-fn question_13(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_string_question(level, 
-        id,
-        "What was your start date there?", 
-        Some("Provide the year and optional month in YYYY-MM format"), 
-    Some(StringEntry::builder()
-                    .min_length(0)
-                    .reqexp("\\d\\d\\d\\d-\\d\\d".to_string())
-                    .build().unwrap()));
-}
-
-fn question_14(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_string_question(level, 
-        id,
-        "What was your end date there?", 
-        Some("Provide the year and optional month in YYYY-MM format"), 
-    Some(StringEntry::builder()
-                    .min_length(0)
-                    .reqexp("\\d\\d\\d\\d-\\d\\d".to_string())
-                    .build().unwrap()));
-}
-
-fn question_15(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_proceed_question(
-        level,
-        id,
-        "Should your answers be stored?", 
-        None);
-}
-
-fn info_txt_01(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_info_text(
-        level,
-        id,
-        "In the following questionaire you will be asked about your family and things?");
-}
-
-fn info_txt_02(builder: &mut QuestionaireBuilder, level: u8, id: &str) {
-    builder.add_info_text(
-        level,
-        id,
-        "Your input will be now processed and stored");
+fn get_job_entries() -> Vec<QuestionaireEntry> {
+    vec![
+        QuestionaireEntry::Question(
+            QuestionEntry::builder()
+            .query_text("What was the name of the company you worked for?")
+            .entry_type(EntryType::String(
+                StringEntry::builder()
+                .min_length(2)
+                .max_length(200)
+                .build().unwrap()
+            ))
+            .build().unwrap()
+        ),
+        QuestionaireEntry::Question(
+            QuestionEntry::builder()
+            .query_text("What was your job title?")
+            .entry_type(EntryType::String(
+                StringEntry::builder()
+                .min_length(2)
+                .max_length(100)
+                .build().unwrap()
+            ))
+            .build().unwrap()
+        ),
+        QuestionaireEntry::Question(
+            QuestionEntry::builder()
+            .query_text("What was your start date there?")
+            .help_text("Provide the year and optional month in 'YYYY-MM' or 'YYYY' format".to_string())
+            .entry_type(EntryType::String(
+                StringEntry::builder()
+                .min_length(2)
+                .max_length(100)
+                .build().unwrap()
+            ))
+            .build().unwrap()
+        ),
+        QuestionaireEntry::Block(
+            SubBlock::builder()
+            .start_text("Have you finished your job there?")
+            .entries(get_job_end_entries())
+            .build().unwrap()
+        )
+    ]
 }
 
 fn build_questionaire() -> Questionaire {
     let mut builder = Questionaire::builder();
-    info_txt_01(&mut builder, 0, "id0");
-    question_01(&mut builder, 0, "id1");
-    question_02(&mut builder, 0, "id2");
-    question_03(&mut builder, 0, "id3");
-        question_04(&mut builder, 1, "id4");
-            question_05(&mut builder, 2, "id5");
-            question_06(&mut builder, 2, "id6");
-        question_07(&mut builder, 1, "id7");
-            question_08(&mut builder, 2, "id8");
-            question_09(&mut builder, 2, "id9");
-    question_10(&mut builder, 0, "id10");
-        question_11(&mut builder, 1, "id11");
-        question_12(&mut builder, 1, "id12");
-        question_13(&mut builder, 1, "id13");
-        question_14(&mut builder, 1, "id14");
-    question_15(&mut builder, 0, "id15");
-    info_txt_02(&mut builder, 0, "id16");
-    builder.build()
-
+    builder.add_init_block_and_build (
+        "In the following questionaire you will be asked about your family and things. Do you want to proceed?", 
+        Some("All data are collected. Do you want to process them?"), 
+        None, 
+        Some(
+            vec![
+                QuestionaireEntry::Question (
+                    QuestionEntry::builder()
+                    .query_text("What's your name?")
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .min_length(2)
+                        .max_length(100)
+                        .build().unwrap()
+                    ))
+                    .build().unwrap(),
+                ),
+                QuestionaireEntry::Question (
+                    QuestionEntry::builder()
+                    .query_text("What's your date of birth?")
+                    .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                        .build().unwrap()
+                    ))
+                    .build().unwrap()
+                ),
+                QuestionaireEntry::Block(
+                    SubBlock::builder()
+                    .start_text("Do you have brothers or sisters?")
+                    .end_text("Do you have more brothers and sisters?".to_string())
+                    .entries(get_sibling_entries())
+                    .build().unwrap()
+                ),
+                QuestionaireEntry::Block(
+                    SubBlock::builder()
+                    .start_text("Have you already worked in a job?")
+                    .end_text("Have you worked in another job?".to_string())
+                    .entries(get_job_entries())
+                    .build().unwrap()
+                )
+            ]
+        ))
 }
 
 fn main() {

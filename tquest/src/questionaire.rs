@@ -54,6 +54,21 @@ pub enum EntryType {
 }
 
 #[derive(Debug, Clone)]
+pub enum QuestionaireEntry {
+    Block(SubBlock),
+    Question(QuestionEntry),
+}
+
+
+#[derive(Debug, Clone, Builder)]
+pub struct SubBlock {
+    pub start_text: String,
+    pub end_text: Option<String>,
+    pub help_text: Option<String>,
+    pub entries: Vec<QuestionaireEntry>,
+}
+
+#[derive(Builder, Debug, Clone)]
 pub struct QuestionEntry {
     pub query_text: String,
     pub help_text: Option<String>,
@@ -65,10 +80,10 @@ pub struct QuestionaireResults {
     pub answers: Vec<QuestionAnswer>,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Questionaire {
     /// Hashmap of level to list of questions per level
-    pub questions: HashMap<u8, Vec<Rc<RefCell<QuestionEntry>>>>,
+    pub init_block: SubBlock,
 }
 
 impl Questionaire {
@@ -83,86 +98,28 @@ impl Questionaire {
 
 #[derive(Debug, Default)]
 pub struct QuestionaireBuilder {
-    pub questions: HashMap<u8, Vec<QuestionEntry>>,
 }
 
 impl QuestionaireBuilder {
-    pub fn add_boolean_question(&mut self, 
-        level: u8,
-        id: &str, 
-        query_text: &str,
+    pub fn add_init_block_and_build(&mut self, 
+        start_text: &str, 
+        end_text: Option<&str>,
         help_text: Option<&str>,
-        entry_def: Option<BoolEntry>) -> &mut Self {
-        self
-    }
-    
-    pub fn add_string_question(&mut self,
-        level: u8,
-        id: &str, 
-        query_text: &str,
-        help_text: Option<&str>,
-        entry_def: Option<StringEntry>) -> &mut Self {
-        self
-    }
-
-    pub fn add_int_question(&mut self, 
-        level: u8,
-        id: &str, 
-        query_text: &str,
-        help_text: Option<&str>,
-        entry_def: Option<IntEntry>) -> &mut Self {
-        self
-    }
-
-    pub fn add_float_question(&mut self, 
-        level: u8,
-        id: &str, 
-        query_text: &str,
-        help_text: Option<&str>,
-        entry_def: Option<FloatEntry>) -> &mut Self {
-        self
-    }
-
-    pub fn add_option_question(&mut self,
-        level: u8, 
-        id: &str, 
-        query_text: &str,
-        help_text: Option<&str>,
-        entry_def: Option<OptionEntry>) -> &mut Self {
-        self
-    }
-
-    pub fn add_proceed_question(&mut self, 
-        level: u8,
-        id: &str, 
-        first_query_text: &str, 
-        additional_query_text: Option<&str>) -> &mut Self {
-        self
-    }
-
-    pub fn add_info_text(&mut self, 
-        level: u8,
-        id: &str,
-        text: &str) -> &mut Self {
-        // self.questions.push(QuestionEntry {
-        //     query_text: text.to_string(),
-        //     help_text: None,
-        //     entry_type: EntryType::InfoTxt,
-        //     id: id.to_string(),
-        // });
-        self
-    }
-
-    pub fn build(&self) -> Questionaire {
-        let mut q = Questionaire::default();
-        for (key, val) in self.questions.iter() {
-            let mut v: Vec<Rc<RefCell<QuestionEntry>>> = Vec::new();
-            for e in val.iter() {
-                v.push(Rc::new(RefCell::new(e.clone())));
-            }
-            q.questions.insert(*key, v);
-        };
-        q
+        questions: Option<Vec<QuestionaireEntry>>) -> Questionaire {
+        let mut init_block = SubBlock::builder()
+            .start_text(start_text).build().unwrap();
+        if end_text.is_some() {
+            init_block.end_text = Some(end_text.unwrap().to_string());
+        }
+        if help_text.is_some() {
+            init_block.help_text = Some(help_text.unwrap().to_string());
+        }
+        if questions.is_some() {
+            init_block.entries = questions.unwrap();
+        }
+        Questionaire {
+            init_block,
+        }
     }
 }
 

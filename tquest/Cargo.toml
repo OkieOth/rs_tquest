@@ -11,7 +11,7 @@ categories = ["command-line-utilities"]
 
 
 [dependencies]
-builder_m4cro = "0.2.0"
+builder_m4cro = "0.3.1"
 anyhow = "1.0.82"
 crossterm = "0.27.0"
 ratatui = "0.26.2"
