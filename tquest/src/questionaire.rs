@@ -91,7 +91,7 @@ impl Questionaire {
         QuestionaireBuilder::default()
     }
     pub fn run(&mut self) -> Result<Option<Vec<QuestionAnswer>>> {
-        let mut ui = Ui::new(self);
+        let mut ui = Ui::new(Some(self));
         return ui.run();
     }
 }

@@ -12,7 +12,7 @@ use crossterm::{
 use ratatui::{prelude::*, 
      widgets::{Block, Borders, LineGauge, Padding, Paragraph, Wrap, Clear}};
 use ratatui::text::Text;
-use crate::{questionaire::{QuestionAnswer, Questionaire}, SubBlock};
+use crate::questionaire::{QuestionAnswer, Questionaire, QuestionaireEntry, SubBlock, QuestionEntry};
 
 const ARROW_LEFT: &str = "←";
 const ARROW_RIGHT: &str = "→";
@@ -48,7 +48,7 @@ pub struct Ui<'a> {
 }
 
 impl<'a> Ui<'a>  {
-    pub fn new(questionaire: &'a Questionaire) -> Self {
+    pub fn new(questionaire: Option<&'a Questionaire>) -> Self {
         Self {
             state: UiState::Question,
             progress: 0.0,
@@ -69,25 +69,54 @@ impl<'a> Ui<'a>  {
         Ok(None)
     }
 
-    fn show_start_screen() -> Result<bool> {
+    fn show_start_screen(&mut self) -> Result<bool> {
         // TODO
         Ok(true)
     }
 
-    fn display_sub_block(&mut self, block: &SubBlock, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<bool> {
-        if show_start_screen() {
-            
+    fn show_end_screen(&mut self) -> Result<bool> {
+        // TODO
+        Ok(true)
+    }
 
-            if show_end_screen() {
-                
-            }
-        }
+    fn process_question(&mut self, q: &QuestionEntry, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
+        // TODO
         Ok(())
     }
 
 
+    fn process_sub_block(&mut self, block: &SubBlock, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<bool> {
+        if self.show_start_screen().expect("Error while showing start screen") {
+            block.entries.iter().for_each(|entry| {
+                match entry {
+                    QuestionaireEntry::Block(b) => {
+                        self.process_sub_block(b, terminal);
+                    },
+                    QuestionaireEntry::Question(q) => {
+                        self.process_question(q, terminal);
+                    }
+                }
+            });
+
+            if self.show_end_screen().expect("Error while showing end screen") {
+                
+            }
+        }
+        Ok(true) // TODO
+    }
+
+
     fn process_questionaire(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
-        self.display_sub_block(&self.questionaire.expect("uninitialized questionaire").init_block, terminal)
+        match self.process_sub_block(&self.questionaire.expect("uninitialized questionaire").init_block, terminal) {
+            Ok(_) => {
+                // TODO
+                Ok(())
+            },
+            Err(e) => {
+                // TODO  
+                Err(e)
+            },
+        }
     }
 
     fn display_current_step(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
