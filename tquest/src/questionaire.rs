@@ -65,6 +65,7 @@ pub enum QuestionaireEntry {
 
 #[derive(Debug, Clone, Builder)]
 pub struct SubBlock {
+    pub id: String,
     pub start_text: String,
     pub end_text: Option<String>,
     pub help_text: Option<String>,
@@ -73,10 +74,10 @@ pub struct SubBlock {
 
 #[derive(Builder, Debug, Clone)]
 pub struct QuestionEntry {
+    pub id: String,
     pub query_text: String,
     pub help_text: Option<String>,
     pub entry_type: EntryType,
-    pub id: String,
 }
 
 pub struct QuestionaireResults {
@@ -92,15 +93,6 @@ pub struct Questionaire {
 impl Questionaire {
     pub fn builder() -> QuestionaireBuilder {
         QuestionaireBuilder::default()
-    }
-}
-
-impl Iterator for &Questionaire {
-    type Item = QuestionaireEntry;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        // TODO
-        None
     }
 }
 
@@ -132,16 +124,21 @@ impl QuestionaireBuilder {
     }
 }
 
+#[derive(Debug)]
+pub enum AnswerEntry {
+    Proceed(ProceedAnswer),
+    Question(QuestionAnswerInput),
+}
 
 #[derive(Debug)]
 pub struct QuestionAnswer {
     pub id: String,
-    pub answer: EntryInput,
+    pub answer: AnswerEntry,
 }
 
 
 #[derive(Debug)]
-pub enum EntryInput {
+pub enum QuestionAnswerInput {
     String(String),
     Int(i32),
     Float(f32),
@@ -152,5 +149,5 @@ pub enum EntryInput {
 #[derive(Debug)]
 pub struct ProceedAnswer {
     pub id: String,
-    pub answer: bool,
+    pub iterations: Vec<Vec<AnswerEntry>>,
 }

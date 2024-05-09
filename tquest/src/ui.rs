@@ -12,15 +12,15 @@ use crossterm::{
 use ratatui::{prelude::*, 
      widgets::{Block, Borders, LineGauge, Padding, Paragraph, Wrap, Clear}};
 use ratatui::text::Text;
-use crate::questionaire::{QuestionAnswer, ProceedAnswer, EntryInput, SubBlock, QuestionEntry};
+use crate::questionaire::{QuestionAnswer, QuestionAnswerInput, QuestionEntry, AnswerEntry};
 
 const ARROW_LEFT: &str = "←";
 const ARROW_RIGHT: &str = "→";
 
 
 pub trait QuestionaireView {
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<ProceedAnswer>;
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionAnswer>;
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<(bool, bool)>;
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<(bool, QuestionAnswer)>;
 }
 
 
@@ -262,19 +262,16 @@ impl Ui  {
 }
 
 impl QuestionaireView for Ui {
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<ProceedAnswer> {
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<(bool, bool)> {
         let ht = help_text.into();
         // TODO
-        Ok(ProceedAnswer{
-            id: String::from("dummyId"),
-            answer: true,
-        })
+        Ok((true, true))
     }
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionAnswer>{
-        Ok(QuestionAnswer{
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<(bool, QuestionAnswer)>{
+        Ok((true, QuestionAnswer{
             id: String::from("dummyId"),
-            answer: EntryInput::String(String::from("dummyAnswer")),
-        })
+            answer: AnswerEntry::Question(QuestionAnswerInput::String(String::from("dummyAnswer"))),
+        }))
 
     }
 }
