@@ -136,7 +136,6 @@ impl QuestionaireBuilder {
 #[derive(Debug)]
 pub struct QuestionAnswer {
     pub id: String,
-    pub level: u8,
     pub answer: EntryInput,
 }
 
@@ -148,5 +147,10 @@ pub enum EntryInput {
     Float(f32),
     Bool(bool),
     Option(String),
-    ProceedQuery(bool),
+}
+
+#[derive(Debug)]
+pub struct ProceedAnswer {
+    pub id: String,
+    pub answer: bool,
 }

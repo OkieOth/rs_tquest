@@ -19,10 +19,11 @@ impl<V: QuestionaireView> QController<V> {
         for e in &self.questionaire {
             match e {
                 QuestionaireEntry::Question(q) => {
-                    self.view.show_question_screen();
+                    self.view.show_question_screen(&q);
                 },
                 QuestionaireEntry::Block(b) => {
-                    self.view.show_proceed_screen();
+                    //self.view.show_proceed_screen("dummy id", "dummy query", "dummy help");
+                    self.view.show_proceed_screen("dummy id", "dummy query", None);
                 }
             }
         }
