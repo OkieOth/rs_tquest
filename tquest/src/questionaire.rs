@@ -1,11 +1,13 @@
 use std::collections::HashMap;
+use std::path::Iter;
 use std::rc::Rc;
 use std::cell::RefCell;
 
 use builder_m4cro::Builder;
-use anyhow::{Result};
+use anyhow::Result;
 
 use crate::Ui;
+
 
 #[derive(Debug, Builder, Clone)]
 pub struct StringEntry {
@@ -60,6 +62,7 @@ pub enum QuestionaireEntry {
 }
 
 
+
 #[derive(Debug, Clone, Builder)]
 pub struct SubBlock {
     pub start_text: String,
@@ -90,11 +93,17 @@ impl Questionaire {
     pub fn builder() -> QuestionaireBuilder {
         QuestionaireBuilder::default()
     }
-    pub fn run(&mut self) -> Result<Option<Vec<QuestionAnswer>>> {
-        let mut ui = Ui::new(Some(self));
-        return ui.run();
+}
+
+impl Iterator for &Questionaire {
+    type Item = QuestionaireEntry;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // TODO
+        None
     }
 }
+
 
 #[derive(Debug, Default)]
 pub struct QuestionaireBuilder {
