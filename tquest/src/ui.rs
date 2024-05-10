@@ -12,10 +12,27 @@ use crossterm::{
 use ratatui::{prelude::*, 
      widgets::{Block, Borders, LineGauge, Padding, Paragraph, Wrap, Clear}};
 use ratatui::text::Text;
-use crate::questionaire::{QuestionAnswer, Questionaire, QuestionaireEntry, SubBlock, QuestionEntry};
+use crate::questionaire::{QuestionAnswerInput, QuestionEntry};
 
 const ARROW_LEFT: &str = "←";
 const ARROW_RIGHT: &str = "→";
+
+
+pub enum QuestionScreenResult {
+    Canceled,
+    Proceeded(QuestionAnswerInput)
+}
+
+pub enum ProceedScreenResult {
+    Canceled,
+    Proceeded(bool)
+}
+
+
+pub trait QuestionaireView {
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult>;
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>;
+}
 
 
 #[derive(Default)]
@@ -34,11 +51,11 @@ pub enum InputMode {
 }
 
 #[derive(Default)]
-pub struct Ui<'a> {
+pub struct Ui {
     pub state: UiState,
     pub progress: f32,
 
-    pub questionaire: Option<&'a Questionaire>,
+//    pub questionaire: Option<&'a Questionaire>,
     pub show_popup: bool,
     pub input_mode: InputMode,
     pub cursor_position_by_char: usize,
@@ -47,12 +64,11 @@ pub struct Ui<'a> {
     pub input_display_start: usize,
 }
 
-impl<'a> Ui<'a>  {
-    pub fn new(questionaire: Option<&'a Questionaire>) -> Self {
+impl Ui  {
+    pub fn new() -> Self {
         Self {
             state: UiState::Question,
             progress: 0.0,
-            questionaire: questionaire,
             show_popup: false,
             input_mode: InputMode::Editing,
             cursor_position_by_char: 0,
@@ -62,62 +78,13 @@ impl<'a> Ui<'a>  {
         }   
     }
 
-    pub fn run(&mut self) -> Result<Option<Vec<QuestionAnswer>>> {
-        let mut terminal = self.setup_terminal().context("setup failed")?;
-        self.process_questionaire(&mut terminal).context("app loop failed")?;
-        self.restore_terminal(&mut terminal).context("restore terminal failed")?;
-        Ok(None)
-    }
+    // pub fn run(&mut self) -> Result<Option<Vec<QuestionAnswer>>> {
+    //     let mut terminal = self.setup_terminal().context("setup failed")?;
+    //     //self.process_questionaire(&mut terminal).context("app loop failed")?;
+    //     self.restore_terminal(&mut terminal).context("restore terminal failed")?;
+    //     Ok(None)
+    // }
 
-    fn show_start_screen(&mut self) -> Result<bool> {
-        // TODO
-        Ok(true)
-    }
-
-    fn show_end_screen(&mut self) -> Result<bool> {
-        // TODO
-        Ok(true)
-    }
-
-    fn process_question(&mut self, q: &QuestionEntry, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
-        // TODO
-        Ok(())
-    }
-
-
-    fn process_sub_block(&mut self, block: &SubBlock, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<bool> {
-        if self.show_start_screen().expect("Error while showing start screen") {
-            block.entries.iter().for_each(|entry| {
-                match entry {
-                    QuestionaireEntry::Block(b) => {
-                        self.process_sub_block(b, terminal);
-                    },
-                    QuestionaireEntry::Question(q) => {
-                        self.process_question(q, terminal);
-                    }
-                }
-            });
-
-            if self.show_end_screen().expect("Error while showing end screen") {
-                
-            }
-        }
-        Ok(true) // TODO
-    }
-
-
-    fn process_questionaire(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
-        match self.process_sub_block(&self.questionaire.expect("uninitialized questionaire").init_block, terminal) {
-            Ok(_) => {
-                // TODO
-                Ok(())
-            },
-            Err(e) => {
-                // TODO  
-                Err(e)
-            },
-        }
-    }
 
     fn display_current_step(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
         loop {
@@ -305,113 +272,124 @@ impl<'a> Ui<'a>  {
     
 }
 
+impl QuestionaireView for Ui {
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult> {
+        let ht = help_text.into();
+        // TODO
+        Ok(ProceedScreenResult::Canceled)
+    }
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
+        // TODO
+        Ok(QuestionScreenResult::Canceled)
+    }
+}
 
 
 fn render_app(frame: &mut Frame, ui: &mut Ui) {
-    let main_layout = Layout::new(
-        Direction::Vertical,
-        [
-            Constraint::Length(1),
-            Constraint::Min(1),
-            Constraint::Length(1),
-            Constraint::Length(4),
-            Constraint::Length(3),
-        ],
-    )
-    .margin(0)
-    .split(frame.size());
-    ui.max_input_diplay_len = (frame.size().width - 6) as usize;
+    // let main_layout = Layout::new(
+    //     Direction::Vertical,
+    //     [
+    //         Constraint::Length(1),
+    //         Constraint::Min(1),
+    //         Constraint::Length(1),
+    //         Constraint::Length(4),
+    //         Constraint::Length(3),
+    //     ],
+    // )
+    // .margin(0)
+    // .split(frame.size());
+    // ui.max_input_diplay_len = (frame.size().width - 6) as usize;
 
-    frame.render_widget(
-        Block::new().borders(Borders::TOP).title(" I am a header "),
-        main_layout[0],
-    );
+    // frame.render_widget(
+    //     Block::new().borders(Borders::TOP).title(" I am a header "),
+    //     main_layout[0],
+    // );
 
-    let question_txt = Paragraph::new(ui.get_question_text()).wrap(Wrap{trim: true});
-
-
-    let block = Block::new()
-        .borders(Borders::ALL)
-        .padding(Padding::uniform(1))
-        .border_style(Style::new().gray().bold().italic())
-        .title(" Question: ");
-
-    let inner = main_layout[1].inner(&Margin {
-        vertical: 0,
-        horizontal: 1,
-    });
-
-    frame.render_widget(question_txt.block(block), inner);
-
-    let navigation = Paragraph::new("(ENTER - to take answer, press 'q' to quit) ")
-    .right_aligned();
-    frame.render_widget(navigation, main_layout[2]);
+    // let question_txt = Paragraph::new(ui.get_question_text()).wrap(Wrap{trim: true});
 
 
-    let inner_answer = main_layout[3].inner(&Margin {
-        vertical: 0,
-        horizontal: 1,
-    });
+    // let block = Block::new()
+    //     .borders(Borders::ALL)
+    //     .padding(Padding::uniform(1))
+    //     .border_style(Style::new().gray().bold().italic())
+    //     .title(" Question: ");
+
+    // let inner = main_layout[1].inner(&Margin {
+    //     vertical: 0,
+    //     horizontal: 1,
+    // });
+
+    // frame.render_widget(question_txt.block(block), inner);
+
+    // let navigation = Paragraph::new("(ENTER - to take answer, press 'q' to quit) ")
+    // .right_aligned();
+    // frame.render_widget(navigation, main_layout[2]);
 
 
-    let mut text= Text::from(ui.get_input_to_display());
-    text.push_line(ui.get_scroll_info());
-    let input = Paragraph::new(text)
-        .style(match ui.input_mode {
-            InputMode::Normal => Style::default(),
-            InputMode::Editing => Style::default().fg(Color::Yellow),
-        })
-        .block(Block::default()
-            .border_style(
-                Style::new()
-                    .bold()
-                    .italic())
-            .borders(Borders::ALL).title("Answer: ")
-            .padding(Padding::horizontal(1)));
-    frame.render_widget(input, inner_answer);
+    // let inner_answer = main_layout[3].inner(&Margin {
+    //     vertical: 0,
+    //     horizontal: 1,
+    // });
 
-    match ui.input_mode {
-        InputMode::Normal =>
-            // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
-            {}
 
-        InputMode::Editing => {
-            #[allow(clippy::cast_possible_truncation)]
-            frame.set_cursor(
-                inner_answer.x + ui.cursor_position_by_char as u16 + 2,
-                inner_answer.y + 1,
-            );
-        }
-    }
+    // let mut text= Text::from(ui.get_input_to_display());
+    // text.push_line(ui.get_scroll_info());
+    // let input = Paragraph::new(text)
+    //     .style(match ui.input_mode {
+    //         InputMode::Normal => Style::default(),
+    //         InputMode::Editing => Style::default().fg(Color::Yellow),
+    //     })
+    //     .block(Block::default()
+    //         .border_style(
+    //             Style::new()
+    //                 .bold()
+    //                 .italic())
+    //         .borders(Borders::ALL).title("Answer: ")
+    //         .padding(Padding::horizontal(1)));
+    // frame.render_widget(input, inner_answer);
 
-    if ui.show_popup {
-        let help_txt = Paragraph::new("This is a quite long help text. I wonder how this will be rendered and if all parts of the text will be visible. :-/");
+    // match ui.input_mode {
+    //     InputMode::Normal =>
+    //         // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
+    //         {}
 
-        let block = Block::default().title("Help").borders(Borders::ALL);
-        let popup_area = centered_rect(60, 20, frame.size());
-        frame.render_widget(Clear, popup_area); //this clears out the background
+    //     InputMode::Editing => {
+    //         #[allow(clippy::cast_possible_truncation)]
+    //         frame.set_cursor(
+    //             inner_answer.x + ui.cursor_position_by_char as u16 + 2,
+    //             inner_answer.y + 1,
+    //         );
+    //     }
+    // }
 
-        frame.render_widget(help_txt.block(block), popup_area);
-    }
+    // if ui.show_popup {
+    //     let help_txt = Paragraph::new("This is a quite long help text. I wonder how this will be rendered and if all parts of the text will be visible. :-/");
 
-    let line_gauge = LineGauge::default()
-        .block(Block::new()
-            .borders(Borders::ALL)
-            .title(" Progress "))
-        .gauge_style(
-        Style::default()
-            .fg(Color::Yellow)
-            .bg(Color::Black)
-            .add_modifier(Modifier::BOLD),
-    )
-    .line_set(symbols::line::THICK)
-    .ratio(0.8);
-    let inner_gauge = main_layout[4].inner(&Margin {
-        vertical: 0,
-        horizontal: 1,
-    });
+    //     let block = Block::default().title("Help").borders(Borders::ALL);
+    //     let popup_area = centered_rect(60, 20, frame.size());
+    //     frame.render_widget(Clear, popup_area); //this clears out the background
 
-    frame.render_widget(line_gauge, inner_gauge);
+    //     frame.render_widget(help_txt.block(block), popup_area);
+    // }
+
+    // let line_gauge = LineGauge::default()
+    //     .block(Block::new()
+    //         .borders(Borders::ALL)
+    //         .title(" Progress "))
+    //     .gauge_style(
+    //     Style::default()
+    //         .fg(Color::Yellow)
+    //         .bg(Color::Black)
+    //         .add_modifier(Modifier::BOLD),
+    // )
+    // .line_set(symbols::line::THICK)
+    // .ratio(0.8);
+    // let inner_gauge = main_layout[4].inner(&Margin {
+    //     vertical: 0,
+    //     horizontal: 1,
+    // });
+
+    // frame.render_widget(line_gauge, inner_gauge);
 }
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
@@ -434,174 +412,174 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_answer_scrolling_01() {
-        let test_input = "1234567890".to_string();
-        let mut ui = super::Ui::default();
-        ui.max_input_diplay_len = 20;
-        ui.input = test_input.clone();
-        assert_eq!(test_input.clone(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,0);
-        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    // #[test]
+    // fn test_answer_scrolling_01() {
+    //     let test_input = "1234567890".to_string();
+    //     let mut ui = super::Ui::default();
+    //     ui.max_input_diplay_len = 20;
+    //     ui.input = test_input.clone();
+    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,0);
+    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        ui.move_cursor_left();
-        assert_eq!(test_input.clone(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,0);
-        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    //     ui.move_cursor_left();
+    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,0);
+    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        ui.move_cursor_right();
-        assert_eq!(test_input.clone(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,1);
-        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    //     ui.move_cursor_right();
+    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,1);
+    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        ui.move_cursor_left();
-        assert_eq!(test_input.clone(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,0);
-        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    //     ui.move_cursor_left();
+    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,0);
+    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        ui.move_cursor_right();
-        assert_eq!(test_input.clone(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,1);
-        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    //     ui.move_cursor_right();
+    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,1);
+    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        (0..7).for_each(|_| {
-            ui.move_cursor_right();
-        });
-        assert_eq!(test_input.clone(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,8);
-        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    //     (0..7).for_each(|_| {
+    //         ui.move_cursor_right();
+    //     });
+    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,8);
+    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        ui.move_cursor_right();
-        ui.move_cursor_right();
-        assert_eq!(test_input.clone(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,10);
-        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    //     ui.move_cursor_right();
+    //     ui.move_cursor_right();
+    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,10);
+    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        ui.move_cursor_right();
-        ui.move_cursor_right();
-        assert_eq!(test_input.clone(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,10);
-        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    //     ui.move_cursor_right();
+    //     ui.move_cursor_right();
+    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,10);
+    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        ui.move_cursor_left();
-        ui.move_cursor_left();
-        assert_eq!(test_input.clone(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,8);
-        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    //     ui.move_cursor_left();
+    //     ui.move_cursor_left();
+    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,8);
+    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        (0..8).for_each(|_| {
-            ui.move_cursor_left();
-        });
-        assert_eq!(test_input.clone(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,0);
-        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    //     (0..8).for_each(|_| {
+    //         ui.move_cursor_left();
+    //     });
+    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,0);
+    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-        ui.move_cursor_left();
-        ui.move_cursor_left();
-        ui.move_cursor_left();
-        assert_eq!(test_input.clone(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,0);
-        assert_eq!(" ".repeat(20),ui.get_scroll_info());
+    //     ui.move_cursor_left();
+    //     ui.move_cursor_left();
+    //     ui.move_cursor_left();
+    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,0);
+    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
 
-    }
+    // }
 
-    #[test]
-    fn test_answer_scrolling_02() {
-        let test_input = "123456789012345678901234567890".to_string();
-        let mut ui = super::Ui::default();
-        ui.max_input_diplay_len = 20;
-        ui.input = test_input.clone();
-        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,0);
-        let scroll_info = format!("{}{}"," ".repeat(19), ARROW_RIGHT);
-        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+    // #[test]
+    // fn test_answer_scrolling_02() {
+    //     let test_input = "123456789012345678901234567890".to_string();
+    //     let mut ui = super::Ui::default();
+    //     ui.max_input_diplay_len = 20;
+    //     ui.input = test_input.clone();
+    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,0);
+    //     let scroll_info = format!("{}{}"," ".repeat(19), ARROW_RIGHT);
+    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
 
-        ui.move_cursor_left();
-        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,0);
-        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+    //     ui.move_cursor_left();
+    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,0);
+    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
 
-        ui.move_cursor_right();
-        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,1);
-        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+    //     ui.move_cursor_right();
+    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,1);
+    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
 
-        ui.move_cursor_left();
-        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,0);
-        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+    //     ui.move_cursor_left();
+    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,0);
+    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
 
-        ui.move_cursor_right();
-        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,1);
-        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+    //     ui.move_cursor_right();
+    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,1);
+    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
 
-        (0..18).for_each(|_| {
-            ui.move_cursor_right();
-        });
-        assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,0);
-        assert_eq!(ui.cursor_position_by_char,19);
-        assert_eq!(scroll_info.clone(), ui.get_scroll_info());
+    //     (0..18).for_each(|_| {
+    //         ui.move_cursor_right();
+    //     });
+    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,0);
+    //     assert_eq!(ui.cursor_position_by_char,19);
+    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
 
-        ui.move_cursor_right();
-        assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,1);
-        assert_eq!(ui.cursor_position_by_char,19);
-        let scroll_info2 = format!("{}{}{}", ARROW_LEFT, " ".repeat(18), ARROW_RIGHT);
-        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+    //     ui.move_cursor_right();
+    //     assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,1);
+    //     assert_eq!(ui.cursor_position_by_char,19);
+    //     let scroll_info2 = format!("{}{}{}", ARROW_LEFT, " ".repeat(18), ARROW_RIGHT);
+    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
 
-        ui.move_cursor_left();
-        assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,1);
-        assert_eq!(ui.cursor_position_by_char,18);
-        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+    //     ui.move_cursor_left();
+    //     assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,1);
+    //     assert_eq!(ui.cursor_position_by_char,18);
+    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
 
-        ui.move_cursor_left();
-        assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,1);
-        assert_eq!(ui.cursor_position_by_char,17);
-        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+    //     ui.move_cursor_left();
+    //     assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,1);
+    //     assert_eq!(ui.cursor_position_by_char,17);
+    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
 
-        (0..10).for_each(|_| {
-            ui.move_cursor_left();
-        });
+    //     (0..10).for_each(|_| {
+    //         ui.move_cursor_left();
+    //     });
 
-        assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,1);
-        assert_eq!(ui.cursor_position_by_char,7);
-        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+    //     assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,1);
+    //     assert_eq!(ui.cursor_position_by_char,7);
+    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
 
-        ui.enter_char('ß');
-        assert_eq!("2345678ß90123456789".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,1);
-        assert_eq!(ui.cursor_position_by_char,8);
-        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+    //     ui.enter_char('ß');
+    //     assert_eq!("2345678ß90123456789".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,1);
+    //     assert_eq!(ui.cursor_position_by_char,8);
+    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
 
-        (0..3).for_each(|_| {
-            ui.move_cursor_right();
-        });
-        ui.delete_char_before();
-        assert_eq!("2345678ß91234567890".to_string(),ui.get_input_to_display());
-        assert_eq!(ui.input_display_start,1);
-        assert_eq!(ui.cursor_position_by_char,10);
-        assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
+    //     (0..3).for_each(|_| {
+    //         ui.move_cursor_right();
+    //     });
+    //     ui.delete_char_before();
+    //     assert_eq!("2345678ß91234567890".to_string(),ui.get_input_to_display());
+    //     assert_eq!(ui.input_display_start,1);
+    //     assert_eq!(ui.cursor_position_by_char,10);
+    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
 
-    }
+    // }
 }

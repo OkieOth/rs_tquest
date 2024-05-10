@@ -1,5 +1,5 @@
 use tquest::{Questionaire, QuestionEntry, EntryType,QuestionaireEntry, 
-    StringEntry, OptionEntry, SubBlock};
+    StringEntry, OptionEntry, SubBlock, run_questionaire};
 
 
 fn get_brother_questions() -> Vec<QuestionaireEntry> {
@@ -201,9 +201,8 @@ fn build_questionaire() -> Questionaire {
 }
 
 fn main() {
-    let mut questionaire = build_questionaire();
-
-    let results =questionaire.run();
+    let questionaire = build_questionaire();
+    let results = run_questionaire(questionaire);
 
     //generate_json_and_send_to_eiko(results);
     println!("Results: {:?}", results);

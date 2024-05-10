@@ -1,11 +1,13 @@
 use std::collections::HashMap;
+use std::path::Iter;
 use std::rc::Rc;
 use std::cell::RefCell;
 
 use builder_m4cro::Builder;
-use anyhow::{Result};
+use anyhow::Result;
 
 use crate::Ui;
+
 
 #[derive(Debug, Builder, Clone)]
 pub struct StringEntry {
@@ -60,8 +62,10 @@ pub enum QuestionaireEntry {
 }
 
 
+
 #[derive(Debug, Clone, Builder)]
 pub struct SubBlock {
+    pub id: String,
     pub start_text: String,
     pub end_text: Option<String>,
     pub help_text: Option<String>,
@@ -70,14 +74,10 @@ pub struct SubBlock {
 
 #[derive(Builder, Debug, Clone)]
 pub struct QuestionEntry {
+    pub id: String,
     pub query_text: String,
     pub help_text: Option<String>,
     pub entry_type: EntryType,
-    pub id: String,
-}
-
-pub struct QuestionaireResults {
-    pub answers: Vec<QuestionAnswer>,
 }
 
 #[derive(Debug)]
@@ -90,11 +90,8 @@ impl Questionaire {
     pub fn builder() -> QuestionaireBuilder {
         QuestionaireBuilder::default()
     }
-    pub fn run(&mut self) -> Result<Option<Vec<QuestionAnswer>>> {
-        let mut ui = Ui::new(Some(self));
-        return ui.run();
-    }
 }
+
 
 #[derive(Debug, Default)]
 pub struct QuestionaireBuilder {
@@ -123,21 +120,24 @@ impl QuestionaireBuilder {
     }
 }
 
-
 #[derive(Debug)]
-pub struct QuestionAnswer {
-    pub id: String,
-    pub level: u8,
-    pub answer: EntryInput,
+pub enum AnswerEntry {
+    Block(BlockAnswer),
+    Question(QuestionAnswerInput),
 }
 
 
 #[derive(Debug)]
-pub enum EntryInput {
+pub enum QuestionAnswerInput {
     String(String),
     Int(i32),
     Float(f32),
     Bool(bool),
     Option(String),
-    ProceedQuery(bool),
+}
+
+#[derive(Debug)]
+pub struct BlockAnswer {
+    pub id: String,
+    pub iterations: Vec<Vec<AnswerEntry>>,
 }
