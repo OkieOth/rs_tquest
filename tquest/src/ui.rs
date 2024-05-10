@@ -12,15 +12,26 @@ use crossterm::{
 use ratatui::{prelude::*, 
      widgets::{Block, Borders, LineGauge, Padding, Paragraph, Wrap, Clear}};
 use ratatui::text::Text;
-use crate::questionaire::{QuestionAnswer, QuestionAnswerInput, QuestionEntry, AnswerEntry};
+use crate::questionaire::{QuestionAnswerInput, QuestionEntry};
 
 const ARROW_LEFT: &str = "←";
 const ARROW_RIGHT: &str = "→";
 
 
+pub enum QuestionScreenResult {
+    Canceled,
+    Proceeded(QuestionAnswerInput)
+}
+
+pub enum ProceedScreenResult {
+    Canceled,
+    Proceeded(bool)
+}
+
+
 pub trait QuestionaireView {
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<(bool, bool)>;
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<(bool, QuestionAnswer)>;
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult>;
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>;
 }
 
 
@@ -67,12 +78,12 @@ impl Ui  {
         }   
     }
 
-    pub fn run(&mut self) -> Result<Option<Vec<QuestionAnswer>>> {
-        let mut terminal = self.setup_terminal().context("setup failed")?;
-        //self.process_questionaire(&mut terminal).context("app loop failed")?;
-        self.restore_terminal(&mut terminal).context("restore terminal failed")?;
-        Ok(None)
-    }
+    // pub fn run(&mut self) -> Result<Option<Vec<QuestionAnswer>>> {
+    //     let mut terminal = self.setup_terminal().context("setup failed")?;
+    //     //self.process_questionaire(&mut terminal).context("app loop failed")?;
+    //     self.restore_terminal(&mut terminal).context("restore terminal failed")?;
+    //     Ok(None)
+    // }
 
 
     fn display_current_step(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
@@ -262,17 +273,14 @@ impl Ui  {
 }
 
 impl QuestionaireView for Ui {
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<(bool, bool)> {
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult> {
         let ht = help_text.into();
         // TODO
-        Ok((true, true))
+        Ok(ProceedScreenResult::Canceled)
     }
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<(bool, QuestionAnswer)>{
-        Ok((true, QuestionAnswer{
-            id: String::from("dummyId"),
-            answer: AnswerEntry::Question(QuestionAnswerInput::String(String::from("dummyAnswer"))),
-        }))
-
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
+        // TODO
+        Ok(QuestionScreenResult::Canceled)
     }
 }
 

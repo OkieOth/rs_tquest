@@ -80,10 +80,6 @@ pub struct QuestionEntry {
     pub entry_type: EntryType,
 }
 
-pub struct QuestionaireResults {
-    pub answers: Vec<QuestionAnswer>,
-}
-
 #[derive(Debug)]
 pub struct Questionaire {
     /// Hashmap of level to list of questions per level
@@ -126,14 +122,8 @@ impl QuestionaireBuilder {
 
 #[derive(Debug)]
 pub enum AnswerEntry {
-    Proceed(ProceedAnswer),
+    Block(BlockAnswer),
     Question(QuestionAnswerInput),
-}
-
-#[derive(Debug)]
-pub struct QuestionAnswer {
-    pub id: String,
-    pub answer: AnswerEntry,
 }
 
 
@@ -147,7 +137,7 @@ pub enum QuestionAnswerInput {
 }
 
 #[derive(Debug)]
-pub struct ProceedAnswer {
+pub struct BlockAnswer {
     pub id: String,
     pub iterations: Vec<Vec<AnswerEntry>>,
 }
