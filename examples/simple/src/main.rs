@@ -2,10 +2,11 @@ use tquest::{Questionaire, QuestionEntry, EntryType,QuestionaireEntry,
     StringEntry, OptionEntry, SubBlock, run_questionaire};
 
 
-fn get_brother_questions() -> Vec<QuestionaireEntry> {
+fn get_brother_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
     vec![
         QuestionaireEntry::Question (
             QuestionEntry::builder()
+            .id(&format!("{}_01", id_pre))
             .query_text("What's his name?")
             .entry_type(EntryType::String(
                 StringEntry::builder()
@@ -17,6 +18,7 @@ fn get_brother_questions() -> Vec<QuestionaireEntry> {
         ),
         QuestionaireEntry::Question (
             QuestionEntry::builder()
+            .id(&format!("{}_02", id_pre))
             .query_text("What's his date of birth?")
             .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
             .entry_type(EntryType::String(
@@ -29,10 +31,11 @@ fn get_brother_questions() -> Vec<QuestionaireEntry> {
     ]
 }
 
-fn get_sister_questions() -> Vec<QuestionaireEntry> {
+fn get_sister_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
     vec![
         QuestionaireEntry::Question (
             QuestionEntry::builder()
+            .id(&format!("{}_01", id_pre))
             .query_text("What's his name?")
             .entry_type(EntryType::String(
                 StringEntry::builder()
@@ -44,6 +47,7 @@ fn get_sister_questions() -> Vec<QuestionaireEntry> {
         ),
         QuestionaireEntry::Question (
             QuestionEntry::builder()
+            .id(&format!("{}_02", id_pre))
             .query_text("What's his date of birth?")
             .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
             .entry_type(EntryType::String(
@@ -56,29 +60,36 @@ fn get_sister_questions() -> Vec<QuestionaireEntry> {
     ]
 }
 
-fn get_sibling_entries() -> Vec<QuestionaireEntry> {
+fn get_sibling_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
+    let id_block_1 = format!("{}_01", id_pre);
+    let id_block_2 = format!("{}_02", id_pre);
     vec![
         QuestionaireEntry::Block(
             SubBlock::builder()
+            .id(&id_block_1)
             .start_text("Do you have a sister?")
             .end_text("Do you have another sister?".to_string())
-            .entries(get_sister_questions())
+            .entries(get_sister_questions(&id_block_1))
+            .loop_over_entries(true)
             .build().unwrap()
         ),
         QuestionaireEntry::Block(
             SubBlock::builder()
+            .id(&id_block_2)
             .start_text("Do you have a brother?")
             .end_text("Do you have another brother?".to_string())
-            .entries(get_brother_questions())
+            .entries(get_brother_questions(&id_block_2))
+            .loop_over_entries(true)
             .build().unwrap()
         )
     ]
 }
 
-fn get_job_end_entries() -> Vec<QuestionaireEntry> {
+fn get_job_end_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
     vec![
         QuestionaireEntry::Question(
             QuestionEntry::builder()
+            .id(&format!("{}_01", id_pre))
             .query_text("What was your end date there?")
             .help_text("Provide the year and optional month in 'YYYY-MM' or 'YYYY' format.".to_string())
             .entry_type(EntryType::String(
@@ -91,6 +102,7 @@ fn get_job_end_entries() -> Vec<QuestionaireEntry> {
         ),
         QuestionaireEntry::Question(
             QuestionEntry::builder()
+            .id(&format!("{}_02", id_pre))
             .query_text("Why did you leave the job?")
             .help_text("Provide the main reason for leaving".to_string())
             .entry_type(EntryType::Option(
@@ -107,10 +119,11 @@ fn get_job_end_entries() -> Vec<QuestionaireEntry> {
     ]
 }
 
-fn get_job_entries() -> Vec<QuestionaireEntry> {
+fn get_job_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
     vec![
         QuestionaireEntry::Question(
             QuestionEntry::builder()
+            .id(&format!("{}_01", id_pre))
             .query_text("What was the name of the company you worked for?")
             .entry_type(EntryType::String(
                 StringEntry::builder()
@@ -122,6 +135,7 @@ fn get_job_entries() -> Vec<QuestionaireEntry> {
         ),
         QuestionaireEntry::Question(
             QuestionEntry::builder()
+            .id(&format!("{}_02", id_pre))
             .query_text("What was your job title?")
             .entry_type(EntryType::String(
                 StringEntry::builder()
@@ -133,6 +147,7 @@ fn get_job_entries() -> Vec<QuestionaireEntry> {
         ),
         QuestionaireEntry::Question(
             QuestionEntry::builder()
+            .id(&format!("{}_03", id_pre))
             .query_text("What was your start date there?")
             .help_text("Provide the year and optional month in 'YYYY-MM' or 'YYYY' format".to_string())
             .entry_type(EntryType::String(
@@ -145,8 +160,9 @@ fn get_job_entries() -> Vec<QuestionaireEntry> {
         ),
         QuestionaireEntry::Block(
             SubBlock::builder()
+            .id(&format!("{}_04", id_pre))
             .start_text("Have you finished your job there?")
-            .entries(get_job_end_entries())
+            .entries(get_job_end_entries(&format!("{}_04", id_pre)))
             .build().unwrap()
         )
     ]
@@ -155,6 +171,7 @@ fn get_job_entries() -> Vec<QuestionaireEntry> {
 fn build_questionaire() -> Questionaire {
     let mut builder = Questionaire::builder();
     builder.add_init_block_and_build (
+        "id00",
         "In the following questionaire you will be asked about your family and things. Do you want to proceed?", 
         Some("All data are collected. Do you want to process them?"), 
         None, 
@@ -162,6 +179,7 @@ fn build_questionaire() -> Questionaire {
             vec![
                 QuestionaireEntry::Question (
                     QuestionEntry::builder()
+                    .id("id01")
                     .query_text("What's your name?")
                     .entry_type(EntryType::String(
                         StringEntry::builder()
@@ -173,6 +191,7 @@ fn build_questionaire() -> Questionaire {
                 ),
                 QuestionaireEntry::Question (
                     QuestionEntry::builder()
+                    .id("id02")
                     .query_text("What's your date of birth?")
                     .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
                     .entry_type(EntryType::String(
@@ -184,16 +203,20 @@ fn build_questionaire() -> Questionaire {
                 ),
                 QuestionaireEntry::Block(
                     SubBlock::builder()
+                    .id("id03")
                     .start_text("Do you have brothers or sisters?")
                     .end_text("Do you have more brothers and sisters?".to_string())
-                    .entries(get_sibling_entries())
+                    .entries(get_sibling_entries("id03"))
+                    .loop_over_entries(true)
                     .build().unwrap()
                 ),
                 QuestionaireEntry::Block(
                     SubBlock::builder()
+                    .id("id04")
                     .start_text("Have you already worked in a job?")
                     .end_text("Have you worked in another job?".to_string())
-                    .entries(get_job_entries())
+                    .entries(get_job_entries("id04"))
+                    .loop_over_entries(true)
                     .build().unwrap()
                 )
             ]

@@ -63,13 +63,14 @@ pub enum QuestionaireEntry {
 
 
 
-#[derive(Debug, Clone, Builder)]
+#[derive(Debug, Clone, Default, Builder)]
 pub struct SubBlock {
     pub id: String,
     pub start_text: String,
     pub end_text: Option<String>,
     pub help_text: Option<String>,
     pub entries: Vec<QuestionaireEntry>,
+    pub loop_over_entries: bool,
 }
 
 #[derive(Builder, Debug, Clone)]
@@ -98,13 +99,15 @@ pub struct QuestionaireBuilder {
 }
 
 impl QuestionaireBuilder {
-    pub fn add_init_block_and_build(&mut self, 
+    pub fn add_init_block_and_build(&mut self,
+        id: &str, 
         start_text: &str, 
         end_text: Option<&str>,
         help_text: Option<&str>,
         questions: Option<Vec<QuestionaireEntry>>) -> Questionaire {
-        let mut init_block = SubBlock::builder()
-            .start_text(start_text).build().unwrap();
+        let mut init_block = SubBlock::default();
+        init_block.id = id.to_string();
+        init_block.start_text = start_text.to_string();
         if end_text.is_some() {
             init_block.end_text = Some(end_text.unwrap().to_string());
         }
