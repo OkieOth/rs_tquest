@@ -1,6 +1,5 @@
 use std::{
     io::{self, Stdout},
-    time::Duration,
 };
 
 use anyhow::{Context, Result};
@@ -9,9 +8,8 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{prelude::*, 
-     widgets::{Block, Borders, LineGauge, Padding, Paragraph, Wrap, Clear}};
-use ratatui::text::Text;
+use ratatui::{prelude::*};
+
 use crate::questionaire::{QuestionAnswerInput, QuestionEntry};
 
 const ARROW_LEFT: &str = "←";
@@ -273,19 +271,19 @@ impl Ui  {
 }
 
 impl QuestionaireView for Ui {
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult> {
-        let ht = help_text.into();
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, _text: &str, help_text: T) -> Result<ProceedScreenResult> {
+        let _ht = help_text.into();
         // TODO
         Ok(ProceedScreenResult::Canceled)
     }
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
+    fn show_question_screen(&mut self, _question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
         // TODO
         Ok(QuestionScreenResult::Canceled)
     }
 }
 
 
-fn render_app(frame: &mut Frame, ui: &mut Ui) {
+fn render_app(_frame: &mut Frame, _ui: &mut Ui) {
     // let main_layout = Layout::new(
     //     Direction::Vertical,
     //     [
