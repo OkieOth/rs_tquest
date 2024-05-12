@@ -142,5 +142,7 @@ pub enum QuestionAnswerInput {
 #[derive(Debug)]
 pub struct BlockAnswer {
     pub id: String,
+
+    /// Vector of itereations, with the answers of each iteration in its own vector
     pub iterations: Vec<Vec<AnswerEntry>>,
 }

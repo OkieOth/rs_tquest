@@ -11,7 +11,7 @@ use anyhow::Result;
 #[derive(Debug)]
 pub enum QuestionaireResult {
     Canceled,
-    Finished(Vec<AnswerEntry>),
+    Finished(BlockAnswer),
 }
 
 pub enum ControllerResult {
@@ -34,7 +34,12 @@ impl<V: QuestionaireView> QController<V> {
         match run_sub_block(&mut self.view, &self.questionaire.init_block)? {
             ControllerResult::Canceled => return Ok(QuestionaireResult::Canceled),
             ControllerResult::Finished(answers) => return Ok(
-                QuestionaireResult::Finished(vec![answers])
+                match answers {
+                    AnswerEntry::Block(ba) => {
+                        return Ok(QuestionaireResult::Finished(ba));
+                    },
+                    AnswerEntry::Question(_) => panic!("receive wrong result for init-block"),
+                }
             ),
         }
     }
@@ -123,7 +128,20 @@ fn run_sub_block<V: QuestionaireView> (
 mod tests {
     use crate::questionaire::{QuestionEntry, EntryType, StringEntry, QuestionAnswerInput};
 
-    use super::*;    
+    use super::*;
+
+    fn validate_question_string_input(ae: &AnswerEntry, expected_input: &str) {
+        match ae {
+            AnswerEntry::Block(_) => panic!("unexpected block answer"),
+            AnswerEntry::Question(qa) => {
+                if let QuestionAnswerInput::String(qai) = qa {
+                    assert_eq!(expected_input, qai);
+                } else {
+                    panic!("expected StringInput, but got something different")
+                }
+            },
+        }
+    }
 
     #[test]
     fn it_travers_01() {
@@ -136,7 +154,7 @@ mod tests {
             current_step: usize,
             answers: Vec<UiMockAnswer>,
         }
-    
+
         impl QuestionaireView for UiMock {
             fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult> {
                 if (self.current_step != 0) && (self.current_step != 3) {
@@ -194,7 +212,21 @@ mod tests {
         let mut c: QController<UiMock> = QController::new(questionaire, ui);
         match c.run() {
             Ok(r) => {
-                println!("result: {:?}", r);
+                match r {
+                    QuestionaireResult::Finished(ba) => {
+                        println!("result: {:?}", &ba);
+                        assert_eq!(1,ba.iterations.len());
+                        let a = ba.iterations.get(0).unwrap();
+                        assert_eq!(2, a.len());
+                        let a0 = a.get(0).unwrap();
+                        validate_question_string_input(&a0, "step: 2");
+                        let a1 = a.get(1).unwrap();
+                        validate_question_string_input(&a1, "step: 3");
+                    },
+                    QuestionaireResult::Canceled => {
+                        panic!("received cancel from a valid questionaire flow");
+                    }
+                }
             },
             Err(e) => panic!("received Err as questionaire result"),
         }
