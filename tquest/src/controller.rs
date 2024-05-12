@@ -1,5 +1,3 @@
-use std::borrow::BorrowMut;
-
 use crate::{
     questionaire::{AnswerEntry, BlockAnswer, Questionaire, SubBlock},
     ui::{ProceedScreenResult, QuestionScreenResult, QuestionaireView},
@@ -33,14 +31,14 @@ impl<V: QuestionaireView> QController<V> {
     pub fn run(&mut self) -> Result<QuestionaireResult> {
         match run_sub_block(&mut self.view, &self.questionaire.init_block)? {
             ControllerResult::Canceled => return Ok(QuestionaireResult::Canceled),
-            ControllerResult::Finished(answers) => return Ok(
+            ControllerResult::Finished(answers) => {
                 match answers {
                     AnswerEntry::Block(ba) => {
                         return Ok(QuestionaireResult::Finished(ba));
                     },
                     AnswerEntry::Question(_) => panic!("receive wrong result for init-block"),
                 }
-            ),
+            },
         }
     }
 }
@@ -87,9 +85,7 @@ fn enter_sub_block<V: QuestionaireView> (
                 ProceedScreenResult::Canceled => return Ok(ControllerResult::Canceled),
                 ProceedScreenResult::Proceeded(b) => {
                     if ! b {
-                        return Ok(ControllerResult::Finished(
-                            AnswerEntry::Block(block_answer)
-                        ));
+                        return Ok(ControllerResult::Canceled);
                     } else {
                         // TODO ... it's some kind of critical. What's happen if the last question
                         // is answered with 'No' but it should not be looped
@@ -120,7 +116,7 @@ fn run_sub_block<V: QuestionaireView> (
         sub_block.help_text.as_deref(),
     )? {
         ProceedScreenResult::Canceled => return Ok(ControllerResult::Canceled),
-        ProceedScreenResult::Proceeded(b) => return enter_sub_block(view, sub_block),
+        ProceedScreenResult::Proceeded(_b) => return enter_sub_block(view, sub_block),
     }
 }
 
@@ -145,18 +141,13 @@ mod tests {
 
     #[test]
     fn it_travers_01() {
-        enum UiMockAnswer {
-
-        }
-
         #[derive(Default)]
         struct UiMock {
             current_step: usize,
-            answers: Vec<UiMockAnswer>,
         }
-
+    
         impl QuestionaireView for UiMock {
-            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult> {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T) -> Result<ProceedScreenResult> {
                 if (self.current_step != 0) && (self.current_step != 3) {
                     panic!("unexpected proceed screen: {}: {}", self.current_step, text);
                 }
@@ -172,8 +163,9 @@ mod tests {
                 self.current_step += 1; 
                 Ok(QuestionScreenResult::Proceeded(QuestionAnswerInput::String(format!("step: {}", self.current_step))))
             }
-        }    
-
+        }
+    
+     
         let ui = UiMock::default();
         let questionaire = Questionaire::builder().add_init_block_and_build (
             "id00",
@@ -228,8 +220,94 @@ mod tests {
                     }
                 }
             },
-            Err(e) => panic!("received Err as questionaire result"),
+            Err(_) => panic!("received Err as questionaire result"),
         }
+        
+    }
+
+    #[test]
+    fn it_travers_cancel_end() {
+        #[derive(Default)]
+        struct UiMock2 {
+            current_step: usize,
+        }
+
+        impl QuestionaireView for UiMock2 {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T) -> Result<ProceedScreenResult> {
+                if (self.current_step != 0) && (self.current_step != 3) {
+                    panic!("unexpected proceed screen: {}: {}", self.current_step, text);
+                }
+                println!("proceed question: {}", text);
+                self.current_step += 1;
+                if self.current_step == 4 {
+                    Ok(ProceedScreenResult::Proceeded(false))
+
+                } else {
+                    Ok(ProceedScreenResult::Proceeded(true))
+                }
+            }
+            fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
+                if (self.current_step != 1) && (self.current_step != 2) {
+                    panic!("unexpected question screen: {}: {}", self.current_step, question_entry.query_text);
+                } 
+                println!("normal question: {}", question_entry.query_text);
+                self.current_step += 1; 
+                Ok(QuestionScreenResult::Proceeded(QuestionAnswerInput::String(format!("step: {}", self.current_step))))
+            }
+        }
+    
+
+        let ui = UiMock2::default();
+        let questionaire = Questionaire::builder().add_init_block_and_build (
+            "id00",
+            "In the following questionaire you will be asked about your family and things. Do you want to proceed?", 
+            Some("All data are collected. Do you want to process them?"), 
+            None, 
+            Some(
+                vec![
+                    QuestionaireEntry::Question (
+                        QuestionEntry::builder()
+                        .id("id01")
+                        .query_text("What's your name?")
+                        .entry_type(EntryType::String(
+                            StringEntry::builder()
+                            .min_length(2)
+                            .max_length(100)
+                            .build().unwrap()
+                        ))
+                        .build().unwrap(),
+                    ),
+                    QuestionaireEntry::Question (
+                        QuestionEntry::builder()
+                        .query_text("What's your date of birth?")
+                        .id("id01")
+                        .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
+                        .entry_type(EntryType::String(
+                            StringEntry::builder()
+                            .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                            .build().unwrap()
+                        ))
+                        .build().unwrap()
+                    )
+                ]),
+                );
+    
+        let mut c: QController<UiMock2> = QController::new(questionaire, ui);
+        let canceled: bool;
+        match c.run() {
+            Ok(r) => {
+                match r {
+                    QuestionaireResult::Finished(_ba) => {
+                        panic!("received finished instead of canceled");
+                    },
+                    QuestionaireResult::Canceled => {
+                        canceled = true;
+                    }
+                }
+            },
+            Err(_) => panic!("received Err as questionaire result"),
+        }
+        assert_eq!(true, canceled);
         
     }
 }
