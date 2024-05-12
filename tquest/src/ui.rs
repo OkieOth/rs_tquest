@@ -408,7 +408,7 @@ fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    
 
     // #[test]
     // fn test_answer_scrolling_01() {
