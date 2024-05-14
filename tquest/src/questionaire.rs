@@ -77,40 +77,74 @@ pub struct QuestionEntry {
 #[derive(Debug)]
 pub struct Questionaire {
     /// Hashmap of level to list of questions per level
+    pub title: String,
     pub init_block: SubBlock,
 }
 
 impl Questionaire {
-    pub fn builder() -> QuestionaireBuilder {
+    pub fn builder<'a> () -> QuestionaireBuilder<'a> {
         QuestionaireBuilder::default()
     }
 }
 
 
 #[derive(Debug, Default)]
-pub struct QuestionaireBuilder {
+pub struct QuestionaireBuilder<'a> {
+    title: &'a str,
+    id: &'a str,
+    start_text: &'a str,
+    end_text: Option<&'a str>,
+    help_text: Option<&'a str>,
+    questions: Option<Vec<QuestionaireEntry>>,
 }
 
-impl QuestionaireBuilder {
-    pub fn add_init_block_and_build(&mut self,
-        id: &str, 
-        start_text: &str, 
-        end_text: Option<&str>,
-        help_text: Option<&str>,
-        questions: Option<Vec<QuestionaireEntry>>) -> Questionaire {
+impl <'a> QuestionaireBuilder<'a> {
+    pub fn id(&mut self, id: &'a str) -> &mut Self {
+        self.id = id;
+        self
+    }
+
+    pub fn title(&mut self, t: &'a str) -> &mut Self {
+        self.title = t;
+        self
+    }
+
+    pub fn start_text(&mut self, t: &'a str) -> &mut Self {
+        self.start_text = t;
+        self
+    }
+
+    pub fn end_text(&mut self, t: &'a str) -> &mut Self {
+        self.end_text = Some(t);
+        self
+    }
+
+    pub fn help_text(&mut self, t: &'a str) -> &mut Self {
+        self.help_text = Some(t);
+        self
+    }
+
+    pub fn questions(&mut self, q: Vec<QuestionaireEntry>) -> &mut Self {
+        self.questions = Some(q);
+        self
+    }
+
+    pub fn build(&self) -> Questionaire {
         let mut init_block = SubBlock::default();
-        init_block.id = id.to_string();
-        init_block.start_text = start_text.to_string();
-        if end_text.is_some() {
-            init_block.end_text = Some(end_text.unwrap().to_string());
+        init_block.id = self.id.to_string();
+        init_block.start_text = self.start_text.to_string();
+        if self.end_text.is_some() {
+            init_block.end_text = Some(self.end_text.unwrap().to_string());
         }
-        if help_text.is_some() {
-            init_block.help_text = Some(help_text.unwrap().to_string());
+        if self.help_text.is_some() {
+            init_block.help_text = Some(self.help_text.unwrap().to_string());
         }
-        if questions.is_some() {
-            init_block.entries = questions.unwrap();
+
+        if self.questions.is_some() {
+            init_block.entries = self.questions.as_ref().unwrap().clone();
         }
         Questionaire {
+            title: self.title.to_string(),
             init_block,
         }
     }

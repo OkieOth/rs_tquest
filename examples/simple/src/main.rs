@@ -169,13 +169,12 @@ fn get_job_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
 }
 
 fn build_questionaire() -> Questionaire {
-    let mut builder = Questionaire::builder();
-    builder.add_init_block_and_build (
-        "id00",
-        "In the following questionaire you will be asked about your family and things. Do you want to proceed?", 
-        Some("All data are collected. Do you want to process them?"), 
-        None, 
-        Some(
+    Questionaire::builder()
+        .id("id00")
+        .title("Fun Questionaire")
+        .start_text("In the following questionaire you will be asked about your family and things. Do you want to proceed?")
+        .end_text("All data are collected. Do you want to process them?")
+        .questions(
             vec![
                 QuestionaireEntry::Question (
                     QuestionEntry::builder()
@@ -220,7 +219,8 @@ fn build_questionaire() -> Questionaire {
                     .build().unwrap()
                 )
             ]
-        ))
+        )
+        .build()
 }
 
 fn main() {

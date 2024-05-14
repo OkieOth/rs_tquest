@@ -14,7 +14,7 @@ pub use questionaire::{Questionaire, QuestionaireBuilder, QuestionaireEntry, Que
 pub use ui::Ui;
 
 pub fn run_questionaire(questionaire: Questionaire) -> Result<QuestionaireResult> {
-    let ui: Ui = Ui::new();
+    let ui: Ui = Ui::new()?;
     let mut c: QController<Ui> = QController::new(questionaire, ui);
     c.run()
 }

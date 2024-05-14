@@ -48,106 +48,33 @@ pub enum InputMode {
     Editing,
 }
 
-#[derive(Default)]
 pub struct Ui {
-    pub state: UiState,
-    pub progress: f32,
-
-//    pub questionaire: Option<&'a Questionaire>,
-    pub show_popup: bool,
-    pub input_mode: InputMode,
-    pub cursor_position_by_char: usize,
-    pub input: String,
-    pub max_input_diplay_len: usize,
-    pub input_display_start: usize,
+    terminal: Terminal<CrosstermBackend<Stdout>>,
+    input_mode: InputMode,
+    progress: f32,
+    show_popup: bool,
+    cursor_position_by_char: usize,
+    input: String,
+    state: UiState,
+    max_input_diplay_len: usize,
+    input_display_start: usize,
 }
 
+
 impl Ui  {
-    pub fn new() -> Self {
-        Self {
-            state: UiState::Question,
+    pub fn new() -> Result<Self> {
+        let terminal = setup_terminal().context("setup failed")?;
+        Ok(Self {
+            input_mode: InputMode::Editing,
+            terminal,
             progress: 0.0,
             show_popup: false,
-            input_mode: InputMode::Editing,
             cursor_position_by_char: 0,
             input: "".to_string(),
             max_input_diplay_len: 0,
             input_display_start: 0,
-        }   
-    }
-
-    // pub fn run(&mut self) -> Result<Option<Vec<QuestionAnswer>>> {
-    //     let mut terminal = self.setup_terminal().context("setup failed")?;
-    //     //self.process_questionaire(&mut terminal).context("app loop failed")?;
-    //     self.restore_terminal(&mut terminal).context("restore terminal failed")?;
-    //     Ok(None)
-    // }
-
-
-    fn display_current_step(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
-        loop {
-            terminal.draw(|f| render_app(f, self))?;
-            if let Event::Key(key) = event::read()? {
-                match self.input_mode {
-                    InputMode::Normal => match key.code {
-                        KeyCode::Char('e') => {
-                            self.input_mode = InputMode::Editing;
-                        }
-                        KeyCode::Char('q') => {
-                            return Ok(());
-                        }
-                        _ => {}
-                    },
-                    InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
-                        KeyCode::Enter => self.submit_message(),
-                        KeyCode::Char(to_insert) => {
-                            self.enter_char(to_insert);
-                        }
-                        KeyCode::Backspace => {
-                            self.delete_char_before();
-                        }
-                        KeyCode::Delete => {
-                            self.delete_char_under();
-                        }
-                        KeyCode::Left => {
-                            self.move_cursor_left();
-                        }
-                        KeyCode::Right => {
-                            self.move_cursor_right();
-                        }
-                        KeyCode::Esc => {
-                            self.input_mode = InputMode::Normal;
-                        }
-                        _ => {}
-                    },
-                    InputMode::Editing => {}
-                }
-            }
-        }
-    }
-
-    fn setup_terminal(&mut self) -> Result<Terminal<CrosstermBackend<Stdout>>> {
-        let mut stdout = io::stdout();
-        enable_raw_mode().context("failed to enable raw mode")?;
-        execute!(stdout, EnterAlternateScreen).context("unable to enter alternate screen")?;
-        Terminal::new(CrosstermBackend::new(stdout)).context("creating terminal failed")
-    }
-
-    fn restore_terminal(&mut self, terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
-        disable_raw_mode().context("failed to disable raw mode")?;
-        execute!(terminal.backend_mut(), LeaveAlternateScreen)
-            .context("unable to switch to main screen")?;
-        terminal.show_cursor().context("unable to show cursor")
-    }
-
-    fn get_question_text<'b> (&mut self) -> &str {
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit. \
-        Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. \
-        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi \
-        ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit \
-        in voluptate velit esse cillum dolore eu fugiat nulla pariatur. \
-        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia \
-        deserunt mollit anim id est laborum."
+            state: UiState::Question,
+        }) 
     }
 
     fn move_cursor_left(&mut self) {
@@ -178,17 +105,10 @@ impl Ui  {
         }
     }
 
-    fn byte_index(&mut self) -> usize {
-        self.input
-            .char_indices()
-            .map(|(i, _)| i)
-            .nth(self.cursor_position_by_char + self.input_display_start)
-            .unwrap_or(self.input.len())
-    }
 
 
     fn enter_char(&mut self, new_char: char) {
-        let index = self.byte_index();
+        let index = byte_index(&self.input, self.cursor_position_by_char, self.input_display_start);
         self.input.insert(index, new_char);
         self.move_cursor_right();
     }
@@ -270,33 +190,132 @@ impl Ui  {
     
 }
 
+impl Drop for Ui {
+    fn drop(&mut self) {
+        _ = restore_terminal(&mut self.terminal).context("restore terminal failed");
+    }
+}
+
 impl QuestionaireView for Ui {
     fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, _text: &str, help_text: T) -> Result<ProceedScreenResult> {
         let _ht = help_text.into();
-        // TODO
+        // loop {
+        //     terminal.draw(|f| render_app_proceed_screen(f, self))?;
+        //     if let Event::Key(key) = event::read()? {
+        //         match self.input_mode {
+        //             InputMode::Normal => match key.code {
+        //                 KeyCode::Char('e') => {
+        //                     self.input_mode = InputMode::Editing;
+        //                 }
+        //                 KeyCode::Char('q') => {
+        //                     return Ok(ProceedScreenResult::Canceled);
+        //                 }
+        //                 _ => {}
+        //             },
+        //             InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
+        //                 KeyCode::Enter => {
+        //                     // validate input
+        //                     self.submit_message();
+        //                     return Ok(ProceedScreenResult::Proceeded((true)))
+        //                 },
+        //                 KeyCode::Char(to_insert) => {
+        //                     self.enter_char(to_insert);
+        //                 }
+        //                 _ => {}
+        //             },
+        //             InputMode::Editing => {}
+        //         }
+        //     }
+        // }
         Ok(ProceedScreenResult::Canceled)
     }
+
     fn show_question_screen(&mut self, _question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
         // TODO
+        // let _ht = help_text.into();
+        // loop {
+        //     terminal.draw(|f| render_app(f, self))?;
+        //     if let Event::Key(key) = event::read()? {
+        //         match self.input_mode {
+        //             InputMode::Normal => match key.code {
+        //                 KeyCode::Char('e') => {
+        //                     self.input_mode = InputMode::Editing;
+        //                 }
+        //                 KeyCode::Char('q') => {
+        //                     return Ok(ProceedScreenResult::Canceled);
+        //                 }
+        //                 _ => {}
+        //             },
+        //             InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
+        //                 KeyCode::Enter => {
+        //                     // validate input
+        //                     self.submit_message();
+        //                     return Ok(ProceedScreenResult::Proceeded((true)))
+        //                 },
+        //                 KeyCode::Char(to_insert) => {
+        //                     self.enter_char(to_insert);
+        //                 }
+        //                 KeyCode::Backspace => {
+        //                     self.delete_char_before();
+        //                 }
+        //                 KeyCode::Delete => {
+        //                     self.delete_char_under();
+        //                 }
+        //                 KeyCode::Left => {
+        //                     self.move_cursor_left();
+        //                 }
+        //                 KeyCode::Right => {
+        //                     self.move_cursor_right();
+        //                 }
+        //                 KeyCode::Esc => {
+        //                     self.input_mode = InputMode::Normal;
+        //                 }
+        //                 _ => {}
+        //             },
+        //             InputMode::Editing => {}
+        //         }
+        //     }
+        // }
         Ok(QuestionScreenResult::Canceled)
     }
 }
 
+fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
+    let mut stdout = io::stdout();
+    enable_raw_mode().context("failed to enable raw mode")?;
+    execute!(stdout, EnterAlternateScreen).context("unable to enter alternate screen")?;
+    Terminal::new(CrosstermBackend::new(stdout)).context("creating terminal failed")
+}
 
-fn render_app(_frame: &mut Frame, _ui: &mut Ui) {
-    // let main_layout = Layout::new(
-    //     Direction::Vertical,
-    //     [
-    //         Constraint::Length(1),
-    //         Constraint::Min(1),
-    //         Constraint::Length(1),
-    //         Constraint::Length(4),
-    //         Constraint::Length(3),
-    //     ],
-    // )
-    // .margin(0)
-    // .split(frame.size());
-    // ui.max_input_diplay_len = (frame.size().width - 6) as usize;
+fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
+    disable_raw_mode().context("failed to disable raw mode")?;
+    execute!(terminal.backend_mut(), LeaveAlternateScreen)
+        .context("unable to switch to main screen")?;
+    terminal.show_cursor().context("unable to show cursor")
+}
+
+fn byte_index(input: &str, cursor_position_by_char: usize, input_display_start: usize) -> usize {
+    input
+        .char_indices()
+        .map(|(i, _)| i)
+        .nth(cursor_position_by_char + input_display_start)
+        .unwrap_or(input.len())
+}
+
+fn render_app(frame: &mut Frame, ui: &mut Ui) {
+    let main_layout = Layout::new(
+        Direction::Vertical,
+        [
+            Constraint::Length(1),
+            Constraint::Min(1),
+            Constraint::Length(1),
+            Constraint::Length(4),
+            Constraint::Length(3),
+        ],
+    )
+    .margin(0)
+    .split(frame.size());
+    ui.max_input_diplay_len = (frame.size().width - 6) as usize;
 
     // frame.render_widget(
     //     Block::new().borders(Borders::TOP).title(" I am a header "),
@@ -389,6 +408,8 @@ fn render_app(_frame: &mut Frame, _ui: &mut Ui) {
 
     // frame.render_widget(line_gauge, inner_gauge);
 }
+
+
 
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::vertical([
