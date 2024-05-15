@@ -167,13 +167,11 @@ mod tests {
     
      
         let ui = UiMock::default();
-        let questionaire = Questionaire::builder().add_init_block_and_build (
-            "id00",
-            "In the following questionaire you will be asked about your family and things. Do you want to proceed?", 
-            Some("All data are collected. Do you want to process them?"), 
-            None, 
-            Some(
-                vec![
+        let questionaire = Questionaire::builder()
+            .id("id00")
+            .start_text("In the following questionaire you will be asked about your family and things. Do you want to proceed?")
+            .end_text("All data are collected. Do you want to process them?")
+            .questions(vec![
                     QuestionaireEntry::Question (
                         QuestionEntry::builder()
                         .id("id01")
@@ -198,8 +196,8 @@ mod tests {
                         ))
                         .build().unwrap()
                     )
-                ]),
-                );
+                ])
+            .build();
     
         let mut c: QController<UiMock> = QController::new(questionaire, ui);
         match c.run() {
@@ -258,40 +256,38 @@ mod tests {
     
 
         let ui = UiMock2::default();
-        let questionaire = Questionaire::builder().add_init_block_and_build (
-            "id00",
-            "In the following questionaire you will be asked about your family and things. Do you want to proceed?", 
-            Some("All data are collected. Do you want to process them?"), 
-            None, 
-            Some(
-                vec![
-                    QuestionaireEntry::Question (
-                        QuestionEntry::builder()
-                        .id("id01")
-                        .query_text("What's your name?")
-                        .entry_type(EntryType::String(
-                            StringEntry::builder()
-                            .min_length(2)
-                            .max_length(100)
-                            .build().unwrap()
-                        ))
-                        .build().unwrap(),
-                    ),
-                    QuestionaireEntry::Question (
-                        QuestionEntry::builder()
-                        .query_text("What's your date of birth?")
-                        .id("id01")
-                        .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
-                        .entry_type(EntryType::String(
-                            StringEntry::builder()
-                            .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                            .build().unwrap()
-                        ))
+        let questionaire = Questionaire::builder()
+            .id("id00")
+            .start_text("In the following questionaire you will be asked about your family and things. Do you want to proceed?")
+            .end_text("All data are collected. Do you want to process them?")
+            .title("Dummy title")
+            .questions(vec![
+                QuestionaireEntry::Question (
+                    QuestionEntry::builder()
+                    .id("id01")
+                    .query_text("What's your name?")
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .min_length(2)
+                        .max_length(100)
                         .build().unwrap()
-                    )
-                ]),
-                );
-    
+                    ))
+                    .build().unwrap(),
+                ),
+                QuestionaireEntry::Question (
+                    QuestionEntry::builder()
+                    .query_text("What's your date of birth?")
+                    .id("id01")
+                    .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                        .build().unwrap()
+                    ))
+                    .build().unwrap()
+                )
+            ])
+            .build();
         let mut c: QController<UiMock2> = QController::new(questionaire, ui);
         let canceled: bool;
         match c.run() {
