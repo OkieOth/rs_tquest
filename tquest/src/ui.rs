@@ -8,7 +8,12 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use ratatui::{prelude::*};
+
+use ratatui::{
+    prelude::*,
+    widgets::{Block, Borders, Padding, Paragraph, Wrap, LineGauge},
+};
+
 
 use crate::questionaire::{QuestionAnswerInput, QuestionEntry};
 
@@ -58,11 +63,12 @@ pub struct Ui {
     state: UiState,
     max_input_diplay_len: usize,
     input_display_start: usize,
+    title: String,
 }
 
 
 impl Ui  {
-    pub fn new() -> Result<Self> {
+    pub fn new(title: &str) -> Result<Self> {
         let terminal = setup_terminal().context("setup failed")?;
         Ok(Self {
             input_mode: InputMode::Editing,
@@ -74,6 +80,7 @@ impl Ui  {
             max_input_diplay_len: 0,
             input_display_start: 0,
             state: UiState::Question,
+            title: title.to_string(),
         }) 
     }
 
@@ -197,36 +204,39 @@ impl Drop for Ui {
 }
 
 impl QuestionaireView for Ui {
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, _text: &str, help_text: T) -> Result<ProceedScreenResult> {
-        let _ht = help_text.into();
-        // loop {
-        //     terminal.draw(|f| render_app_proceed_screen(f, self))?;
-        //     if let Event::Key(key) = event::read()? {
-        //         match self.input_mode {
-        //             InputMode::Normal => match key.code {
-        //                 KeyCode::Char('e') => {
-        //                     self.input_mode = InputMode::Editing;
-        //                 }
-        //                 KeyCode::Char('q') => {
-        //                     return Ok(ProceedScreenResult::Canceled);
-        //                 }
-        //                 _ => {}
-        //             },
-        //             InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
-        //                 KeyCode::Enter => {
-        //                     // validate input
-        //                     self.submit_message();
-        //                     return Ok(ProceedScreenResult::Proceeded((true)))
-        //                 },
-        //                 KeyCode::Char(to_insert) => {
-        //                     self.enter_char(to_insert);
-        //                 }
-        //                 _ => {}
-        //             },
-        //             InputMode::Editing => {}
-        //         }
-        //     }
-        // }
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult> {
+        let ht = help_text.into();
+        loop {
+            self.terminal.draw(|f| render_proceed_screen(f, &self.title, text, ht, 0.6))?;
+            if let Event::Key(key) = event::read()? {
+                match self.input_mode {
+                    InputMode::Normal => match key.code {
+                        KeyCode::Char('e') => {
+                            self.input_mode = InputMode::Editing;
+                        }
+                        KeyCode::Esc => {
+                            return Ok(ProceedScreenResult::Canceled);
+                        }
+                        _ => {}
+                    },
+                    InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
+                        KeyCode::Enter => {
+                            // validate input
+                            self.submit_message();
+                            return Ok(ProceedScreenResult::Proceeded((true)))
+                        },
+                        KeyCode::Char(to_insert) => {
+                            self.enter_char(to_insert);
+                        }
+                        KeyCode::Esc => {
+                            return Ok(ProceedScreenResult::Canceled);
+                        }
+                        _ => {}
+                    },
+                    InputMode::Editing => {}
+                }
+            }
+        }
         Ok(ProceedScreenResult::Canceled)
     }
 
@@ -302,45 +312,44 @@ fn byte_index(input: &str, cursor_position_by_char: usize, input_display_start: 
         .unwrap_or(input.len())
 }
 
-fn render_app(frame: &mut Frame, ui: &mut Ui) {
+fn render_proceed_screen(frame: &mut Frame, title: &str, text: &str, help_text: Option<&str>, ratio: f64) {
     let main_layout = Layout::new(
         Direction::Vertical,
         [
-            Constraint::Length(1),
             Constraint::Min(1),
             Constraint::Length(1),
-            Constraint::Length(4),
             Constraint::Length(3),
         ],
     )
     .margin(0)
     .split(frame.size());
-    ui.max_input_diplay_len = (frame.size().width - 6) as usize;
+    let max_input_diplay_len = (frame.size().width - 6) as usize;
 
     // frame.render_widget(
-    //     Block::new().borders(Borders::TOP).title(" I am a header "),
+    //     Block::new().borders(Borders::TOP).title(ui.title),
     //     main_layout[0],
     // );
 
-    // let question_txt = Paragraph::new(ui.get_question_text()).wrap(Wrap{trim: true});
+    let question_txt = Paragraph::new(text).wrap(Wrap{trim: true});
+
+    let block = Block::new()
+        .borders(Borders::ALL)
+        .padding(Padding::uniform(1))
+        .border_style(Style::new().gray().bold().italic())
+        .title(title);
+
+    let inner = main_layout[0].inner(&Margin {
+        vertical: 0,
+        horizontal: 1,
+    });
+
+    frame.render_widget(question_txt.block(block), inner);
 
 
-    // let block = Block::new()
-    //     .borders(Borders::ALL)
-    //     .padding(Padding::uniform(1))
-    //     .border_style(Style::new().gray().bold().italic())
-    //     .title(" Question: ");
 
-    // let inner = main_layout[1].inner(&Margin {
-    //     vertical: 0,
-    //     horizontal: 1,
-    // });
-
-    // frame.render_widget(question_txt.block(block), inner);
-
-    // let navigation = Paragraph::new("(ENTER - to take answer, press 'q' to quit) ")
-    // .right_aligned();
-    // frame.render_widget(navigation, main_layout[2]);
+    let navigation = Paragraph::new("(press 'y' to go on or 'n' to cancel, 'ESC' to quit)  ")
+    .right_aligned();
+    frame.render_widget(navigation, main_layout[1]);
 
 
     // let inner_answer = main_layout[3].inner(&Margin {
@@ -389,24 +398,24 @@ fn render_app(frame: &mut Frame, ui: &mut Ui) {
     //     frame.render_widget(help_txt.block(block), popup_area);
     // }
 
-    // let line_gauge = LineGauge::default()
-    //     .block(Block::new()
-    //         .borders(Borders::ALL)
-    //         .title(" Progress "))
-    //     .gauge_style(
-    //     Style::default()
-    //         .fg(Color::Yellow)
-    //         .bg(Color::Black)
-    //         .add_modifier(Modifier::BOLD),
-    // )
-    // .line_set(symbols::line::THICK)
-    // .ratio(0.8);
-    // let inner_gauge = main_layout[4].inner(&Margin {
-    //     vertical: 0,
-    //     horizontal: 1,
-    // });
+    let line_gauge = LineGauge::default()
+        .block(Block::new()
+            .borders(Borders::ALL)
+            .title(" Progress "))
+        .gauge_style(
+        Style::default()
+            .fg(Color::Yellow)
+            .bg(Color::Black)
+            .add_modifier(Modifier::BOLD),
+    )
+    .line_set(symbols::line::THICK)
+    .ratio(ratio);
+    let inner_gauge = main_layout[2].inner(&Margin {
+        vertical: 0,
+        horizontal: 1,
+    });
 
-    // frame.render_widget(line_gauge, inner_gauge);
+    frame.render_widget(line_gauge, inner_gauge);
 }
 
 

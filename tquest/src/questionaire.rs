@@ -1,4 +1,4 @@
-use builder_m4cro::Builder;
+use builder_m4cro::{Builder, BuilderFromDefault};
 use anyhow::Result;
 
 
@@ -56,7 +56,7 @@ pub enum QuestionaireEntry {
 
 
 
-#[derive(Debug, Clone, Default, Builder)]
+#[derive(Debug, Clone, Default, BuilderFromDefault)]
 pub struct SubBlock {
     pub id: String,
     pub start_text: String,

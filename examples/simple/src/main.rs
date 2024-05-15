@@ -71,7 +71,7 @@ fn get_sibling_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
             .end_text("Do you have another sister?".to_string())
             .entries(get_sister_questions(&id_block_1))
             .loop_over_entries(true)
-            .build().unwrap()
+            .build()
         ),
         QuestionaireEntry::Block(
             SubBlock::builder()
@@ -80,7 +80,7 @@ fn get_sibling_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
             .end_text("Do you have another brother?".to_string())
             .entries(get_brother_questions(&id_block_2))
             .loop_over_entries(true)
-            .build().unwrap()
+            .build()
         )
     ]
 }
@@ -163,7 +163,7 @@ fn get_job_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
             .id(&format!("{}_04", id_pre))
             .start_text("Have you finished your job there?")
             .entries(get_job_end_entries(&format!("{}_04", id_pre)))
-            .build().unwrap()
+            .build()
         )
     ]
 }
@@ -207,7 +207,7 @@ fn build_questionaire() -> Questionaire {
                     .end_text("Do you have more brothers and sisters?".to_string())
                     .entries(get_sibling_entries("id03"))
                     .loop_over_entries(true)
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Block(
                     SubBlock::builder()
@@ -216,7 +216,7 @@ fn build_questionaire() -> Questionaire {
                     .end_text("Have you worked in another job?".to_string())
                     .entries(get_job_entries("id04"))
                     .loop_over_entries(true)
-                    .build().unwrap()
+                    .build()
                 )
             ]
         )
@@ -225,7 +225,7 @@ fn build_questionaire() -> Questionaire {
 
 fn main() {
     let questionaire = build_questionaire();
-    let results = run_questionaire(questionaire);
+    let results = run_questionaire("I AM AN EXAMPLE",questionaire);
 
     //generate_json_and_send_to_eiko(results);
     println!("Results: {:?}", results);
