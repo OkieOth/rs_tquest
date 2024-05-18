@@ -147,6 +147,9 @@ mod tests {
         }
     
         impl QuestionaireView for UiMock {
+            fn print_title<'a>(&mut self, _title: &str) {
+            }
+
             fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T) -> Result<ProceedScreenResult> {
                 if (self.current_step != 0) && (self.current_step != 3) {
                     panic!("unexpected proceed screen: {}: {}", self.current_step, text);
@@ -225,12 +228,14 @@ mod tests {
 
     #[test]
     fn it_travers_cancel_end() {
+        
         #[derive(Default)]
         struct UiMock2 {
             current_step: usize,
         }
 
         impl QuestionaireView for UiMock2 {
+            fn print_title<'a>(&mut self, _title: &str) {}
             fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T) -> Result<ProceedScreenResult> {
                 if (self.current_step != 0) && (self.current_step != 3) {
                     panic!("unexpected proceed screen: {}: {}", self.current_step, text);

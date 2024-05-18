@@ -11,10 +11,14 @@ pub use questionaire::{Questionaire, QuestionaireBuilder, QuestionaireEntry, Que
     SubBlock, EntryType, StringEntry, IntEntry, FloatEntry, BoolEntry, 
     OptionEntry};
 
+use ui::QuestionaireView;
 pub use ui::Ui;
 
 pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<QuestionaireResult> {
-    let ui: Ui = Ui::new(title)?;
+    let mut ui: Ui = Ui::new()?;
+    if title.len() > 0 {
+        ui.print_title(title);
+    }
     let mut c: QController<Ui> = QController::new(questionaire, ui);
     c.run()
 }
