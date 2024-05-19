@@ -3,7 +3,8 @@ use anyhow::Result;
 use colored::Colorize;
 use std::io;
 
-use crate::questionaire::{QuestionAnswerInput, QuestionEntry, StringEntry, IntEntry, FloatEntry, BoolEntry, OptionEntry};
+use crate::questionaire::{QuestionAnswerInput, QuestionEntry, StringEntry, 
+    IntEntry, FloatEntry, BoolEntry, OptionEntry, EntryType};
 
 
 /// This is returned for normal question entries.
@@ -106,18 +107,76 @@ impl QuestionaireView for Ui {
     }
 
     fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
-        fn get_valid_input_hint<'b>(question_entry: &QuestionEntry) -> &'b str{
+        fn get_valid_input_hint(question_entry: &QuestionEntry) -> String {
+            let mut s: String = match &question_entry.entry_type {
+                EntryType::String (s) => {
+                    s.get_input_hint()
+                },
+                EntryType::Int(s) => {
+                    s.get_input_hint()
+                },
+                EntryType::Float(s) => {
+                    s.get_input_hint()
+                },
+                EntryType::Bool(s) => {
+                    s.get_input_hint()
+                },
+                EntryType::Option(s) => {
+                    s.get_input_hint()
+                },
+                _ => {
+                    "".to_string()
+                },
+            };
             if question_entry.help_text.is_some() {
-                "type [y|n] or only ENTER for yes (for more info type 'h')"
-            } else {
-                "type [y|n] or only ENTER for yes"
-            }
+                s.push_str(" (for more info type 'h')");
+            };
+            s
+        }
+
+        fn print_result_and_return(input_str: &str, ret: QuestionAnswerInput) -> Result<QuestionScreenResult> {
+            println!(">>> {}\n", format!("{}", input_str).green());
+            return Ok(QuestionScreenResult::Proceeded(ret));
+        }
+
+        fn print_wrong_input(question_entry: &QuestionEntry) {
+            let msg = format!("Wrong input! Allowed are: {}", get_valid_input_hint(question_entry));
+            println!("\n{}\n",msg.red());
         }
 
         println!("\n{}", question_entry.query_text.bold());
         println!("\n{}",get_valid_input_hint(&question_entry).dimmed());
 
-        Ok(QuestionScreenResult::Canceled)
+        loop {
+            let mut input = String::new(); 
+            io::stdin().read_line(&mut input).expect("error while reading from stdin");
+            let str = input.trim();
+            if let Ok(ret) = match &question_entry.entry_type {
+                EntryType::String (s) => {
+                    s.validate(&input)
+                },
+                EntryType::Int(s) => {
+                    s.validate(&input)
+                },
+                EntryType::Float(s) => {
+                    s.validate(&input)
+                },
+                EntryType::Bool(s) => {
+                    s.validate(&input)
+                },
+                EntryType::Option(s) => {
+                    s.validate(&input)
+                },
+                _ => {
+                    panic!("unexpected EntryType for question screen");
+                }
+            } {
+                // validate was ok ...
+                return print_result_and_return(str, ret);
+            } else {
+                print_wrong_input(question_entry);
+            }
+        }
     }
 }
 

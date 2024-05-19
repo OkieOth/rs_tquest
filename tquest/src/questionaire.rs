@@ -10,6 +10,12 @@ pub struct StringEntry {
     pub min_length: Option<usize>,
 }
 
+impl StringEntry {
+    pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
+        todo!()
+    }
+}
+
 
 
 #[derive(Debug, Builder, Clone)]
@@ -19,6 +25,12 @@ pub struct IntEntry {
     pub min: Option<i32>,
 }
 
+impl IntEntry {
+    pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
+        todo!()
+    }
+}
+
 #[derive(Debug, Builder, Clone)]
 pub struct FloatEntry {
     pub default_value: Option<i32>,
@@ -26,9 +38,21 @@ pub struct FloatEntry {
     pub min: Option<f32>,
 }
 
+impl FloatEntry {
+    pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
+        todo!()
+    }
+}
+
 #[derive(Debug, Builder, Clone)]
 pub struct BoolEntry {
     pub default_value: Option<bool>,
+}
+
+impl BoolEntry {
+    pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
+        todo!()
+    }
 }
 
 #[derive(Debug, Builder, Clone)]
@@ -36,6 +60,13 @@ pub struct OptionEntry {
     pub default_value: Option<u32>,
     pub options: Vec<String>,
 }
+
+impl OptionEntry {
+    pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
+        todo!()
+    }
+}
+
 
 #[derive(Debug, Clone)]
 pub enum EntryType {
@@ -163,7 +194,7 @@ pub enum QuestionAnswerInput {
     Int(i32),
     Float(f32),
     Bool(bool),
-    Option(String),
+    Option(u32),
 }
 
 #[derive(Debug)]
