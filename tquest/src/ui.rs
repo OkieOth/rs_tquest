@@ -142,30 +142,34 @@ impl ViewHelper for StringEntry {
 }
 
 impl ViewHelper for IntEntry {
-    // #[derive(Debug, Builder, Clone)]
-    // pub struct IntEntry {
-    //     pub default_value: Option<i32>,
-    //     pub max: Option<i32>,
-    //     pub min: Option<i32>,
-    // }
-    
     fn get_input_hint(&self) -> String {
         let mut s = "Please enter an integer and take it with ENTER".to_string();
-        todo!()
+        if let Some(def) = self.default_value {
+            s.push_str(&format!(", default: {}", def));
+        }
+        if let Some(min) = self.min {
+            s.push_str(&format!(", min: {}", min));
+        }
+        if let Some(max) = self.max {
+            s.push_str(&format!(", max: {}", max));
+        }
+        s
     }
 }
 
 impl ViewHelper for FloatEntry {
-    // #[derive(Debug, Builder, Clone)]
-    // pub struct FloatEntry {
-    //     pub default_value: Option<i32>,
-    //     pub max: Option<f32>,
-    //     pub min: Option<f32>,
-    // }
-    
     fn get_input_hint(&self) -> String {
         let mut s = "Please enter a floating point number (e.g. 1.123) and take it with ENTER.".to_string();
-        todo!()
+        if let Some(def) = self.default_value {
+            s.push_str(&format!(", default: {}", def));
+        }
+        if let Some(min) = self.min {
+            s.push_str(&format!(", min: {}", min));
+        }
+        if let Some(max) = self.max {
+            s.push_str(&format!(", max: {}", max));
+        }
+        s
     }
 }
 
