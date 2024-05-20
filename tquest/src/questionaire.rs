@@ -14,6 +14,13 @@ pub struct StringEntry {
 
 impl StringEntry {
     pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
+        if input.len() == 0 {
+            if let Some(def_value) = self.default_value.as_ref() {
+                return Ok(QuestionAnswerInput::String(def_value.clone()));
+            } else {
+                return Err(anyhow!("No default value is set. Input is needed."));
+            }
+        }
         if let Some(min) = self.min_length {
             if input.len() < min {
                 return Err(anyhow!("Min input len not respected"));
@@ -44,7 +51,29 @@ pub struct IntEntry {
 
 impl IntEntry {
     pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
-        todo!()
+        if input.len() == 0 {
+            if let Some(def_value) = self.default_value {
+                return Ok(QuestionAnswerInput::Int(def_value));
+            } else {
+                return Err(anyhow!("No default value is set. Input is needed."));
+            }
+        }
+        let input_value = if let Ok(i) = input.parse() {
+            i
+        } else {
+            return Err(anyhow!("Input can not be cast into an int value."));
+        };
+        if let Some(min) = self.min {
+            if input_value < min {
+                return Err(anyhow!("Input doesn't respect min value constraint."));
+            }
+        }
+        if let Some(max) = self.max {
+            if input_value > max {
+                return Err(anyhow!("Input doesn't respect max value constraint."));
+            }
+        }
+        Ok(QuestionAnswerInput::Int(input_value))
     }
 }
 
