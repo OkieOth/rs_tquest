@@ -14,3 +14,4 @@ categories = ["command-line-utilities"]
 builder_m4cro = "0.3.1"
 anyhow = "1.0.82"
 colored = "2.1.0"
+regex = "1.10.4"

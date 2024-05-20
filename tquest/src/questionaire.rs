@@ -1,6 +1,8 @@
-use builder_m4cro::{Builder, BuilderFromDefault};
-use anyhow::Result;
+use std::str::FromStr;
 
+use builder_m4cro::{Builder, BuilderFromDefault};
+use anyhow::{Result, anyhow};
+use regex::{self, Regex};
 
 #[derive(Debug, Builder, Clone)]
 pub struct StringEntry {
@@ -12,10 +14,25 @@ pub struct StringEntry {
 
 impl StringEntry {
     pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
-        todo!()
+        if let Some(min) = self.min_length {
+            if input.len() < min {
+                return Err(anyhow!("Min input len not respected"));
+            }
+        }
+        if let Some(max) = self.max_length {
+            if input.len() > max {
+                return Err(anyhow!("Max input len not respected"));
+            }
+        }
+        if let Some(regex) = self.reqexp.as_ref() {
+            let re = Regex::from_str(regex).unwrap();
+            if ! re.is_match(input) {
+                return Err(anyhow!("Max input len not respected"));
+            }
+        }
+        Ok(QuestionAnswerInput::String(input.to_string()))
     }
 }
-
 
 
 #[derive(Debug, Builder, Clone)]
@@ -188,7 +205,7 @@ pub enum AnswerEntry {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum QuestionAnswerInput {
     String(String),
     Int(i32),
@@ -203,4 +220,92 @@ pub struct BlockAnswer {
 
     /// Vector of itereations, with the answers of each iteration in its own vector
     pub iterations: Vec<Vec<AnswerEntry>>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_string_validate_min_length() {
+        let entry = StringEntry {
+            default_value: None,
+            min_length: Some(5),
+            max_length: None,
+            reqexp: None,
+        };
+        assert!(entry.validate("12345").is_ok());
+        assert!(entry.validate("1234").is_err());
+    }
+
+    #[test]
+    fn test_string_validate_max_length() {
+        let entry = StringEntry {
+            default_value: None,
+            min_length: None,
+            max_length: Some(5),
+            reqexp: None,
+        };
+        assert!(entry.validate("12345").is_ok());
+        assert!(entry.validate("123456").is_err());
+    }
+
+    #[test]
+    fn test_string_validate_regex() {
+        let entry = StringEntry {
+            default_value: None,
+            min_length: None,
+            max_length: None,
+            reqexp: Some(r"^\d+$".to_string()),
+        };
+        assert!(entry.validate("12345").is_ok());
+        assert!(entry.validate("1234a").is_err());
+    }
+
+    #[test]
+    fn test_string_validate_all_constraints_met() {
+        let entry = StringEntry {
+            default_value: None,
+            min_length: Some(3),
+            max_length: Some(5),
+            reqexp: Some(r"^\d+$".to_string()),
+        };
+        assert!(entry.validate("123").is_ok());
+        assert!(entry.validate("1234").is_ok());
+        assert!(entry.validate("12345").is_ok());
+        assert!(entry.validate("12").is_err());
+        assert!(entry.validate("123456").is_err());
+        assert!(entry.validate("12a34").is_err());
+    }
+
+    #[test]
+    fn test_string_validate_no_constraints() {
+        let entry = StringEntry {
+            default_value: None,
+            min_length: None,
+            max_length: None,
+            reqexp: None,
+        };
+        assert!(entry.validate("any string").is_ok());
+    }
+
+    #[test]
+    fn test_string_validate_combined_constraints() {
+        let entry = StringEntry {
+            default_value: None,
+            min_length: Some(3),
+            max_length: Some(5),
+            reqexp: Some(r"^\d+$".to_string()),
+        };
+
+        // Valid input that meets all constraints
+        assert_eq!(entry.validate("123").unwrap(), QuestionAnswerInput::String("123".to_string()));
+        assert_eq!(entry.validate("1234").unwrap(), QuestionAnswerInput::String("1234".to_string()));
+        assert_eq!(entry.validate("12345").unwrap(), QuestionAnswerInput::String("12345".to_string()));
+
+        // Invalid inputs
+        assert!(entry.validate("12").is_err()); // Too short
+        assert!(entry.validate("123456").is_err()); // Too long
+        assert!(entry.validate("12a34").is_err()); // Invalid format (non-digit character)
+    }
 }
