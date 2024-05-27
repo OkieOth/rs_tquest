@@ -63,23 +63,22 @@ impl QuestionaireView for Ui {
         }
 
         fn print_wrong_input(has_help: bool) {
-            let msg = format!("Wrong input! Allowed are: {}", get_valid_input_hint(has_help));
-            println!("\n{}\n",msg.red());
+            let msg = format!("Wrong input! {}", get_valid_input_hint(has_help));
+            println!("\n{}\n",msg.yellow());
         }
 
         fn print_result_and_return(input: bool) -> Result<ProceedScreenResult> {
             if input {
-                println!(">>> {}\n", format!("{}", YES).green());
+                println!(">>> {}", format!("{}", YES).green());
 
             } else {
-                println!(">>> {}\n", format!("{}", NO).green());
+                println!(">>> {}", format!("{}", NO).green());
             }
             Ok(ProceedScreenResult::Proceeded(input))
         }
 
         let ht = help_text.into();
-        println!("\n{}", text.bold());
-        println!("\n{}",get_valid_input_hint(ht.is_some()).dimmed());
+        println!("\n{} ({})", text.bold(), get_valid_input_hint(ht.is_some()).dimmed());
 
         loop {
             let mut input = String::new(); 
@@ -135,17 +134,16 @@ impl QuestionaireView for Ui {
         }
 
         fn print_result_and_return(input_str: &str, ret: QuestionAnswerInput) -> Result<QuestionScreenResult> {
-            println!(">>> {}\n", format!("{}", input_str).green());
+            println!(">>> {}", format!("{}", input_str).green());
             return Ok(QuestionScreenResult::Proceeded(ret));
         }
 
         fn print_wrong_input(question_entry: &QuestionEntry) {
-            let msg = format!("Wrong input! Allowed are: {}", get_valid_input_hint(question_entry));
-            println!("\n{}\n",msg.red());
+            let msg = format!("Wrong input! {}", get_valid_input_hint(question_entry));
+            println!("{}",msg.yellow());
         }
 
-        println!("\n{}", question_entry.query_text.bold());
-        println!("\n{}",get_valid_input_hint(&question_entry).dimmed());
+        println!("\n{} ({})", question_entry.query_text.bold(), get_valid_input_hint(&question_entry).dimmed());
 
         loop {
             let mut input = String::new(); 
@@ -153,19 +151,19 @@ impl QuestionaireView for Ui {
             let str = input.trim();
             if let Ok(ret) = match &question_entry.entry_type {
                 EntryType::String (s) => {
-                    s.validate(&input)
+                    s.validate(&str)
                 },
                 EntryType::Int(s) => {
-                    s.validate(&input)
+                    s.validate(&str)
                 },
                 EntryType::Float(s) => {
-                    s.validate(&input)
+                    s.validate(&str)
                 },
                 EntryType::Bool(s) => {
-                    s.validate(&input)
+                    s.validate(&str)
                 },
                 EntryType::Option(s) => {
-                    s.validate(&input)
+                    s.validate(&str)
                 },
                 _ => {
                     panic!("unexpected EntryType for question screen");
