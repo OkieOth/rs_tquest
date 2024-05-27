@@ -301,7 +301,7 @@ pub enum QuestionAnswerInput {
     Option(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct BlockAnswer {
     pub id: String,
 

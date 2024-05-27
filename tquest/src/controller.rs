@@ -28,8 +28,8 @@ impl<V: QuestionaireView> QController<V> {
         Self { questionaire, view }
     }
 
-    pub fn run(&mut self) -> Result<QuestionaireResult> {
-        match run_sub_block(&mut self.view, &self.questionaire.init_block)? {
+    pub fn run(&mut self) -> Result<QuestionaireResult> {    
+        match run_sub_block(&mut self.view, &self.questionaire.init_block, true)? {
             ControllerResult::Canceled => return Ok(QuestionaireResult::Canceled),
             ControllerResult::Finished(answers) => {
                 match answers {
@@ -66,7 +66,7 @@ fn enter_sub_block<V: QuestionaireView> (
                     }
                 }
                 QuestionaireEntry::Block(b) => {
-                    match run_sub_block(view, b)? {
+                    match run_sub_block(view, b, false)? {
                         ControllerResult::Canceled => return Ok(ControllerResult::Canceled),
                         ControllerResult::Finished(answer) => {
                             iteration_answers.push(answer);
@@ -107,22 +107,35 @@ fn enter_sub_block<V: QuestionaireView> (
 
 fn run_sub_block<V: QuestionaireView> (
     view: &mut V,
-    sub_block: &SubBlock
-) -> Result<ControllerResult> {
+    sub_block: &SubBlock, init: bool) -> Result<ControllerResult> {
     //self.view.show_proceed_screen("dummy id", "dummy query", "dummy help");
     match view.show_proceed_screen(
         &sub_block.id,
         &sub_block.start_text,
         sub_block.help_text.as_deref(),
     )? {
-        ProceedScreenResult::Canceled => return Ok(ControllerResult::Canceled),
-        ProceedScreenResult::Proceeded(_b) => return enter_sub_block(view, sub_block),
+        ProceedScreenResult::Canceled => {
+            return Ok(ControllerResult::Canceled);
+        },
+        ProceedScreenResult::Proceeded(b) => {
+            if b {
+                return enter_sub_block(view, sub_block);
+            } else {
+                if init {
+                    return Ok(ControllerResult::Canceled);
+                } else {
+                    let mut ret: BlockAnswer = BlockAnswer::default();
+                    ret.id = sub_block.id.clone();
+                    return Ok(ControllerResult::Finished(AnswerEntry::Block(ret)));
+                }
+            }
+        },
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::questionaire::{QuestionEntry, EntryType, StringEntry, QuestionAnswerInput};
+    use crate::questionaire::{QuestionEntry, EntryType, StringEntry, OptionEntry, QuestionAnswerInput};
 
     use super::*;
 
@@ -311,4 +324,288 @@ mod tests {
         assert_eq!(true, canceled);
         
     }
+
+
+    fn build_complex_questionaire() -> Questionaire {
+        fn get_brother_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
+            vec![
+                QuestionaireEntry::Question (
+                    QuestionEntry::builder()
+                    .id(&format!("{}_01", id_pre))
+                    .query_text("What's his name?")
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .min_length(2)
+                        .max_length(50)
+                        .build().unwrap()
+                    ))
+                    .build().unwrap(),
+                ),
+                QuestionaireEntry::Question (
+                    QuestionEntry::builder()
+                    .id(&format!("{}_02", id_pre))
+                    .query_text("What's his date of birth?")
+                    .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                        .build().unwrap()
+                    ))
+                    .build().unwrap()
+                ),
+            ]
+        }
+        
+        fn get_sister_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
+            vec![
+                QuestionaireEntry::Question (
+                    QuestionEntry::builder()
+                    .id(&format!("{}_01", id_pre))
+                    .query_text("What's her name?")
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .min_length(2)
+                        .max_length(50)
+                        .build().unwrap()
+                    ))
+                    .build().unwrap(),
+                ),
+                QuestionaireEntry::Question (
+                    QuestionEntry::builder()
+                    .id(&format!("{}_02", id_pre))
+                    .query_text("What's her date of birth?")
+                    .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                        .build().unwrap()
+                    ))
+                    .build().unwrap()
+                ),
+            ]
+        }
+        
+        fn get_sibling_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
+            let id_block_1 = format!("{}_01", id_pre);
+            let id_block_2 = format!("{}_02", id_pre);
+            vec![
+                QuestionaireEntry::Block(
+                    SubBlock::builder()
+                    .id(&id_block_1)
+                    .start_text("Do you have a sister?")
+                    .end_text("Do you have another sister?".to_string())
+                    .entries(get_sister_questions(&id_block_1))
+                    .loop_over_entries(true)
+                    .build()
+                ),
+                QuestionaireEntry::Block(
+                    SubBlock::builder()
+                    .id(&id_block_2)
+                    .start_text("Do you have a brother?")
+                    .end_text("Do you have another brother?".to_string())
+                    .entries(get_brother_questions(&id_block_2))
+                    .loop_over_entries(true)
+                    .build()
+                )
+            ]
+        }
+        
+        fn get_job_end_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
+            vec![
+                QuestionaireEntry::Question(
+                    QuestionEntry::builder()
+                    .id(&format!("{}_01", id_pre))
+                    .query_text("What was your end date there?")
+                    .help_text("Provide the year and optional month in 'YYYY-MM' or 'YYYY' format.".to_string())
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .min_length(2)
+                        .max_length(100)
+                        .build().unwrap()
+                    ))
+                    .build().unwrap()
+                ),
+                QuestionaireEntry::Question(
+                    QuestionEntry::builder()
+                    .id(&format!("{}_02", id_pre))
+                    .query_text("Why did you leave the job?")
+                    .help_text("Provide the main reason for leaving".to_string())
+                    .entry_type(EntryType::Option(
+                        OptionEntry::builder()
+                        .options(vec![
+                            "I left by my own".to_string(),
+                            "I was laid off".to_string(),
+                            "Other reason".to_string(),
+                        ])
+                        .build().unwrap()
+                    ))
+                    .build().unwrap()
+                )
+            ]
+        }
+        
+        fn get_job_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
+            vec![
+                QuestionaireEntry::Question(
+                    QuestionEntry::builder()
+                    .id(&format!("{}_01", id_pre))
+                    .query_text("What was the name of the company you worked for?")
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .min_length(2)
+                        .max_length(200)
+                        .build().unwrap()
+                    ))
+                    .build().unwrap()
+                ),
+                QuestionaireEntry::Question(
+                    QuestionEntry::builder()
+                    .id(&format!("{}_02", id_pre))
+                    .query_text("What was your job title?")
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .min_length(2)
+                        .max_length(100)
+                        .build().unwrap()
+                    ))
+                    .build().unwrap()
+                ),
+                QuestionaireEntry::Question(
+                    QuestionEntry::builder()
+                    .id(&format!("{}_03", id_pre))
+                    .query_text("What was your start date there?")
+                    .help_text("Provide the year and optional month in 'YYYY-MM' or 'YYYY' format".to_string())
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .min_length(2)
+                        .max_length(100)
+                        .build().unwrap()
+                    ))
+                    .build().unwrap()
+                ),
+                QuestionaireEntry::Block(
+                    SubBlock::builder()
+                    .id(&format!("{}_04", id_pre))
+                    .start_text("Have you finished your job there?")
+                    .entries(get_job_end_entries(&format!("{}_04", id_pre)))
+                    .build()
+                )
+            ]
+        }
+        
+        Questionaire::builder()
+        .id("id00")
+        .title("Fun Questionaire")
+        .start_text("In the following questionaire you will be asked about your family and things. Do you want to proceed?")
+        .end_text("All data are collected. Do you want to process them?")
+        .questions(
+            vec![
+                QuestionaireEntry::Question (
+                    QuestionEntry::builder()
+                    .id("id01")
+                    .query_text("What's your name?")
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .min_length(2)
+                        .max_length(100)
+                        .build().unwrap()
+                    ))
+                    .build().unwrap(),
+                ),
+                QuestionaireEntry::Question (
+                    QuestionEntry::builder()
+                    .id("id02")
+                    .query_text("What's your date of birth?")
+                    .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
+                    .entry_type(EntryType::String(
+                        StringEntry::builder()
+                        .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                        .build().unwrap()
+                    ))
+                    .build().unwrap()
+                ),
+                QuestionaireEntry::Block(
+                    SubBlock::builder()
+                    .id("id03")
+                    .start_text("Do you have brothers or sisters?")
+                    .end_text("Do you have more brothers and sisters?".to_string())
+                    .entries(get_sibling_entries("id03"))
+                    .loop_over_entries(true)
+                    .build()
+                ),
+                QuestionaireEntry::Block(
+                    SubBlock::builder()
+                    .id("id04")
+                    .start_text("Have you already worked in a job?")
+                    .end_text("Have you worked in another job?".to_string())
+                    .entries(get_job_entries("id04"))
+                    .loop_over_entries(true)
+                    .build()
+                )
+            ]
+        )
+        .build()
+    }
+
+    #[test]
+    fn it_travers_02() {
+
+
+        #[derive(Default)]
+        struct UiMock {
+            current_step: usize,
+        }
+    
+        impl QuestionaireView for UiMock {
+            fn print_title<'a>(&mut self, _title: &str) {
+            }
+
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T) -> Result<ProceedScreenResult> {
+                let ret = match self.current_step {
+                    0 => ProceedScreenResult::Proceeded(true),
+                    3 => ProceedScreenResult::Proceeded(false),
+                    _ => panic!("unexpected proceed screen: step={}", self.current_step)
+                };
+                self.current_step += 1;
+                Ok(ret)
+            }
+            fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
+                let ret = match self.current_step {
+                    1 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("Homer".to_string())),
+                    2 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("1956-03-12".to_string())),
+                    _ => panic!("unexpected question screen: step={}", self.current_step)
+                };
+                self.current_step += 1;
+                Ok(ret)
+            }
+        }
+    
+     
+        let ui = UiMock::default();
+        let questionaire = build_complex_questionaire();
+    
+        let mut c: QController<UiMock> = QController::new(questionaire, ui);
+        match c.run() {
+            Ok(r) => {
+                match r {
+                    QuestionaireResult::Finished(ba) => {
+                        println!("result: {:?}", &ba);
+                        assert_eq!(1,ba.iterations.len());
+                        let a = ba.iterations.get(0).unwrap();
+                        assert_eq!(2, a.len());
+                        let a0 = a.get(0).unwrap();
+                        validate_question_string_input(&a0, "step: 2");
+                        let a1 = a.get(1).unwrap();
+                        validate_question_string_input(&a1, "step: 3");
+                    },
+                    QuestionaireResult::Canceled => {
+                        panic!("received cancel from a valid questionaire flow");
+                    }
+                }
+            },
+            Err(_) => panic!("received Err as questionaire result"),
+        }
+        
+    }
+
 }

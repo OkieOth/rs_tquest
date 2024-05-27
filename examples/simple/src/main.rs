@@ -36,7 +36,7 @@ fn get_sister_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
         QuestionaireEntry::Question (
             QuestionEntry::builder()
             .id(&format!("{}_01", id_pre))
-            .query_text("What's his name?")
+            .query_text("What's her name?")
             .entry_type(EntryType::String(
                 StringEntry::builder()
                 .min_length(2)
@@ -48,7 +48,7 @@ fn get_sister_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
         QuestionaireEntry::Question (
             QuestionEntry::builder()
             .id(&format!("{}_02", id_pre))
-            .query_text("What's his date of birth?")
+            .query_text("What's her date of birth?")
             .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
             .entry_type(EntryType::String(
                 StringEntry::builder()
