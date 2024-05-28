@@ -1,6 +1,6 @@
 //! Main types of the questionaire implementation
 //! 
-use std::str::FromStr;
+use std::{borrow::BorrowMut, str::FromStr};
 
 use builder_m4cro::{Builder, BuilderFromDefault};
 use anyhow::{Result, anyhow};
@@ -194,6 +194,7 @@ pub enum QuestionaireEntry {
 #[derive(Debug, Clone, Default, BuilderFromDefault)]
 pub struct SubBlock {
     pub id: String,
+    pub pos: Option<usize>,
     pub start_text: String,
     pub end_text: Option<String>,
     pub help_text: Option<String>,
@@ -204,6 +205,7 @@ pub struct SubBlock {
 #[derive(Builder, Debug, Clone)]
 pub struct QuestionEntry {
     pub id: String,
+    pub pos: Option<usize>,
     pub query_text: String,
     pub help_text: Option<String>,
     pub entry_type: EntryType,
@@ -213,6 +215,7 @@ pub struct QuestionEntry {
 pub struct Questionaire {
     /// Hashmap of level to list of questions per level
     pub title: String,
+    pub pos_count: Option<usize>,
     pub init_block: SubBlock,
 }
 
@@ -259,10 +262,29 @@ impl <'a> QuestionaireBuilder<'a> {
         self
     }
 
+    fn init_positions(&mut self) {
+        if let Some(questions) = self.questions.as_mut() {
+            let mut counter: usize = 1;
+            for q in questions.iter_mut() {
+                match q {
+                    QuestionaireEntry::Question(e) => {
+                        e.pos = Some(counter);
+                        counter += 1;
+                    },
+                    QuestionaireEntry::Block(b) => {
+                        counter = init_positions_block(b, counter);
+                    }
+                }
+            }
+        }
+    }
+
     pub fn questions(&mut self, q: Vec<QuestionaireEntry>) -> &mut Self {
         self.questions = Some(q);
+        self.init_positions();
         self
     }
+
 
     pub fn build(&self) -> Questionaire {
         let mut init_block = SubBlock::default();
@@ -278,12 +300,32 @@ impl <'a> QuestionaireBuilder<'a> {
         if self.questions.is_some() {
             init_block.entries = self.questions.as_ref().unwrap().clone();
         }
+        let pos_count: usize = 0;
         Questionaire {
             title: self.title.to_string(),
+            pos_count: Some(pos_count),
             init_block,
         }
     }
 }
+
+fn init_positions_block(block: &mut SubBlock, current_counter: usize) -> usize {
+    block.pos = Some(current_counter);
+    let mut counter = current_counter + 1;
+    for q in block.entries.iter_mut() {
+        match q {
+            QuestionaireEntry::Question(e) => {
+                e.pos = Some(counter);
+                counter += 1;
+            },
+            QuestionaireEntry::Block(b) => {
+                counter = init_positions_block(b, counter);
+            }
+        }
+    }
+    counter
+}
+
 
 #[derive(Debug)]
 pub enum AnswerEntry {
