@@ -4,6 +4,8 @@ mod questionaire;
 
 mod controller;
 
+mod persistence;
+
 use controller::{QController, QuestionaireResult};
 use anyhow::Result;
 
