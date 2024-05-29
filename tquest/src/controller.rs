@@ -83,12 +83,12 @@ fn enter_sub_block<V: QuestionaireView> (
             }
         }
         block_answer.iterations.push(iteration_answers);
-        let current = if let Some(p) = sub_block.pos {
-            p
-        } else {
-            0
-        };
         if let Some(end_text) = sub_block.end_text.as_deref() {
+            let current: usize = if init {
+                question_count
+            } else {
+                0
+            };
             match view.show_proceed_screen(
                 &sub_block.id,
                 end_text,
