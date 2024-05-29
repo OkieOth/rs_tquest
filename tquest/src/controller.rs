@@ -28,8 +28,13 @@ impl<V: QuestionaireView> QController<V> {
         Self { questionaire, view }
     }
 
-    pub fn run(&mut self) -> Result<QuestionaireResult> {    
-        match run_sub_block(&mut self.view, &self.questionaire.init_block, true)? {
+    pub fn run(&mut self) -> Result<QuestionaireResult> {   
+        let pos_count = if let Some(pc) = self.questionaire.pos_count {
+            pc
+        } else {
+            0
+        };
+        match run_sub_block(&mut self.view, &self.questionaire.init_block, true, pos_count)? {
             ControllerResult::Canceled => return Ok(QuestionaireResult::Canceled),
             ControllerResult::Finished(answers) => {
                 match answers {
@@ -47,6 +52,7 @@ fn enter_sub_block<V: QuestionaireView> (
     view: &mut V,
     sub_block: &SubBlock,
     init: bool,
+    question_count: usize
 ) -> Result<ControllerResult> {
     //let block_answers: Vec<AnswerEntry> = Vec::new();
     let mut block_answer: BlockAnswer = BlockAnswer {
@@ -59,7 +65,7 @@ fn enter_sub_block<V: QuestionaireView> (
             // ask the sub-queries ...
             match e {
                 QuestionaireEntry::Question(q) => {
-                    match view.show_question_screen(&q)? {
+                    match view.show_question_screen(&q, question_count)? {
                         QuestionScreenResult::Canceled => return Ok(ControllerResult::Canceled),
                         QuestionScreenResult::Proceeded(answer) => {
                             iteration_answers.push(AnswerEntry::Question(answer));
@@ -67,7 +73,7 @@ fn enter_sub_block<V: QuestionaireView> (
                     }
                 }
                 QuestionaireEntry::Block(b) => {
-                    match run_sub_block(view, b, false)? {
+                    match run_sub_block(view, b, false, question_count)? {
                         ControllerResult::Canceled => return Ok(ControllerResult::Canceled),
                         ControllerResult::Finished(answer) => {
                             iteration_answers.push(answer);
@@ -77,11 +83,17 @@ fn enter_sub_block<V: QuestionaireView> (
             }
         }
         block_answer.iterations.push(iteration_answers);
+        let current = if let Some(p) = sub_block.pos {
+            p
+        } else {
+            0
+        };
         if let Some(end_text) = sub_block.end_text.as_deref() {
             match view.show_proceed_screen(
                 &sub_block.id,
                 end_text,
                 sub_block.help_text.as_deref(),
+                question_count, current
             )? {
                 ProceedScreenResult::Canceled => {
                     //return Ok(ControllerResult::Canceled)
@@ -115,19 +127,27 @@ fn enter_sub_block<V: QuestionaireView> (
 
 fn run_sub_block<V: QuestionaireView> (
     view: &mut V,
-    sub_block: &SubBlock, init: bool) -> Result<ControllerResult> {
+    sub_block: &SubBlock, init: bool, question_count: usize) -> Result<ControllerResult> {
     //self.view.show_proceed_screen("dummy id", "dummy query", "dummy help");
+    let current = if let Some(p) = sub_block.pos {
+        p
+    } else {
+        0
+    };
+
     match view.show_proceed_screen(
         &sub_block.id,
         &sub_block.start_text,
         sub_block.help_text.as_deref(),
+        question_count,
+        current
     )? {
         ProceedScreenResult::Canceled => {
             return Ok(ControllerResult::Canceled);
         },
         ProceedScreenResult::Proceeded(b) => {
             if b {
-                return enter_sub_block(view, sub_block, init);
+                return enter_sub_block(view, sub_block, init, question_count);
             } else {
                 if init {
                     return Ok(ControllerResult::Canceled);
@@ -171,7 +191,7 @@ mod tests {
             fn print_title<'a>(&mut self, _title: &str) {
             }
 
-            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T) -> Result<ProceedScreenResult> {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
                 if (self.current_step != 0) && (self.current_step != 3) {
                     panic!("unexpected proceed screen: {}: {}", self.current_step, text);
                 }
@@ -179,7 +199,7 @@ mod tests {
                 self.current_step += 1; 
                 Ok(ProceedScreenResult::Proceeded(true))
             }
-            fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
+            fn show_question_screen(&mut self, question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
                 if (self.current_step != 1) && (self.current_step != 2) {
                     panic!("unexpected question screen: {}: {}", self.current_step, question_entry.query_text);
                 } 
@@ -257,7 +277,7 @@ mod tests {
 
         impl QuestionaireView for UiMock2 {
             fn print_title<'a>(&mut self, _title: &str) {}
-            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T) -> Result<ProceedScreenResult> {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
                 if (self.current_step != 0) && (self.current_step != 3) {
                     panic!("unexpected proceed screen: {}: {}", self.current_step, text);
                 }
@@ -270,7 +290,7 @@ mod tests {
                     Ok(ProceedScreenResult::Proceeded(true))
                 }
             }
-            fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
+            fn show_question_screen(&mut self, question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
                 if (self.current_step != 1) && (self.current_step != 2) {
                     panic!("unexpected question screen: {}: {}", self.current_step, question_entry.query_text);
                 } 
@@ -315,7 +335,7 @@ mod tests {
             fn print_title<'a>(&mut self, _title: &str) {
             }
 
-            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T) -> Result<ProceedScreenResult> {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
                 let ret = match self.current_step {
                     0 => ProceedScreenResult::Proceeded(true),  // Start
                     3 => ProceedScreenResult::Proceeded(false), // Siblings
@@ -328,7 +348,7 @@ mod tests {
                 self.current_step += 1;
                 Ok(ret)
             }
-            fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
+            fn show_question_screen(&mut self, question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
                 let ret = match self.current_step {
                     1 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("Homer".to_string())),
                     2 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("1956-03-12".to_string())),
@@ -380,7 +400,7 @@ mod tests {
             fn print_title<'a>(&mut self, _title: &str) {
             }
 
-            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T) -> Result<ProceedScreenResult> {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
                 let ret = match self.current_step {
                     0 => ProceedScreenResult::Proceeded(true),  // Start
                     3 => ProceedScreenResult::Proceeded(false), // Siblings
@@ -393,7 +413,7 @@ mod tests {
                 self.current_step += 1;
                 Ok(ret)
             }
-            fn show_question_screen(&mut self, _question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
+            fn show_question_screen(&mut self, _question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
                 let ret = match self.current_step {
                     1 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("Homer".to_string())),
                     2 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("1956-03-12".to_string())),

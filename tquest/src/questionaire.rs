@@ -1,6 +1,6 @@
 //! Main types of the questionaire implementation
 //! 
-use std::{borrow::BorrowMut, str::FromStr};
+use std::str::FromStr;
 
 use builder_m4cro::{Builder, BuilderFromDefault};
 use anyhow::{Result, anyhow};

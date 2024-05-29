@@ -23,8 +23,8 @@ pub enum ProceedScreenResult {
 
 pub trait QuestionaireView {
     fn print_title<'a>(&mut self, title: &str);
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult>;
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>;
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T, question_count: usize, current: usize) -> Result<ProceedScreenResult>;
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize) -> Result<QuestionScreenResult>;
 }
 
 trait ViewHelper {
@@ -50,7 +50,7 @@ impl QuestionaireView for Ui {
         println!("\n{}\n", title.bold().underline());
     }
 
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult> {
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, help_text: T, question_count: usize, current: usize) -> Result<ProceedScreenResult> {
         const YES: &str = "yes";
         const NO: &str = "no";
 
@@ -78,7 +78,12 @@ impl QuestionaireView for Ui {
         }
 
         let ht = help_text.into();
-        println!("\n{} ({})", text.bold(), get_valid_input_hint(ht.is_some()).dimmed());
+        let text_to_display = if current != 0 {
+            format!("[{}/{}] {}", current, question_count, text)
+        } else {
+            text.to_string()
+        };
+        println!("\n{} ({})", text_to_display.bold(), get_valid_input_hint(ht.is_some()).dimmed());
 
         loop {
             let mut input = String::new(); 
@@ -105,7 +110,7 @@ impl QuestionaireView for Ui {
         }
     }
 
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize) -> Result<QuestionScreenResult>{
         fn get_valid_input_hint(question_entry: &QuestionEntry) -> String {
             let mut s: String = match &question_entry.entry_type {
                 EntryType::String (s) => {
@@ -143,7 +148,12 @@ impl QuestionaireView for Ui {
             println!("{}",msg.yellow());
         }
 
-        println!("\n{} ({})", question_entry.query_text.bold(), get_valid_input_hint(&question_entry).dimmed());
+        let text_to_display = if let Some(p) = question_entry.pos {
+            format!("[{}/{}] {}", p, question_count, question_entry.query_text)
+        } else {
+            question_entry.query_text.clone()
+        };
+        println!("\n{} ({})", text_to_display.bold(), get_valid_input_hint(&question_entry).dimmed());
 
         loop {
             let mut input = String::new(); 
