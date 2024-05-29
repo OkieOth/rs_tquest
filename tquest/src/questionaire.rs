@@ -237,6 +237,7 @@ pub struct QuestionaireBuilder<'a> {
     start_text: &'a str,
     end_text: Option<&'a str>,
     help_text: Option<&'a str>,
+    question_count: usize,
     questions: Option<Vec<QuestionaireEntry>>,
 }
 
@@ -267,6 +268,23 @@ impl <'a> QuestionaireBuilder<'a> {
     }
 
     fn init_positions(&mut self) {
+        fn init_positions_block(block: &mut SubBlock, current_counter: usize) -> usize {
+            block.pos = Some(current_counter);
+            let mut counter = current_counter + 1;
+            for q in block.entries.iter_mut() {
+                match q {
+                    QuestionaireEntry::Question(e) => {
+                        e.pos = Some(counter);
+                        counter += 1;
+                    },
+                    QuestionaireEntry::Block(b) => {
+                        counter = init_positions_block(b, counter);
+                    }
+                }
+            }
+            counter
+        }
+        
         if let Some(questions) = self.questions.as_mut() {
             let mut counter: usize = 1;
             for q in questions.iter_mut() {
@@ -280,6 +298,7 @@ impl <'a> QuestionaireBuilder<'a> {
                     }
                 }
             }
+            self.question_count = counter - 1;
         }
     }
 
@@ -304,30 +323,12 @@ impl <'a> QuestionaireBuilder<'a> {
         if self.questions.is_some() {
             init_block.entries = self.questions.as_ref().unwrap().clone();
         }
-        let pos_count: usize = 0;
         Questionaire {
             title: self.title.to_string(),
-            pos_count: Some(pos_count),
+            pos_count: Some(self.question_count),
             init_block,
         }
     }
-}
-
-fn init_positions_block(block: &mut SubBlock, current_counter: usize) -> usize {
-    block.pos = Some(current_counter);
-    let mut counter = current_counter + 1;
-    for q in block.entries.iter_mut() {
-        match q {
-            QuestionaireEntry::Question(e) => {
-                e.pos = Some(counter);
-                counter += 1;
-            },
-            QuestionaireEntry::Block(b) => {
-                counter = init_positions_block(b, counter);
-            }
-        }
-    }
-    counter
 }
 
 
@@ -357,7 +358,49 @@ pub struct BlockAnswer {
 
 #[cfg(test)]
 mod tests {
+    use crate::questionaire;
     use super::*;
+    use crate::test_helper;
+
+    #[test]
+    fn test_pos_init_01() {
+        let questionaire = test_helper::create_small_questionaire();
+        assert_eq!(2, questionaire.pos_count.unwrap());
+        assert_eq!(None, questionaire.init_block.pos);
+        let mut counter: usize = 1;
+        for e in questionaire.init_block.entries {
+            match e {
+                QuestionaireEntry::Question(q) => {
+                    assert_eq!(counter, q.pos.unwrap());
+                    counter += 1;
+                },
+                QuestionaireEntry::Block(b) => {
+                    assert_eq!(counter, b.pos.unwrap());
+                    counter += 1;
+                },
+            };
+        }
+    }
+
+    #[test]
+    fn test_pos_init_02() {
+        let questionaire = test_helper::build_complex_questionaire();
+        assert_eq!(16, questionaire.pos_count.unwrap());
+        assert_eq!(None, questionaire.init_block.pos);
+        // let mut counter: usize = 1;
+        // for e in questionaire.init_block.entries {
+        //     match e {
+        //         QuestionaireEntry::Question(q) => {
+        //             assert_eq!(counter, q.pos.unwrap());
+        //             counter += 1;
+        //         },
+        //         QuestionaireEntry::Block(b) => {
+        //             assert_eq!(counter, b.pos.unwrap());
+        //             counter += 1;
+        //         },
+        //     };
+        // }
+    }
 
     #[test]
     fn test_string_validate_min_length() {
