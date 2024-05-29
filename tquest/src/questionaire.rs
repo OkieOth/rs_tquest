@@ -163,11 +163,15 @@ impl OptionEntry {
                 return Err(anyhow!("No default value is set. Input is needed."));
             }
         }
-        if self.options.contains(&input.to_string()) {
-            Ok(QuestionAnswerInput::Option(input.to_string()))
+        if let Ok(i) = input.parse::<usize>() {
+            if i < self.options.len() {
+                return Ok(QuestionAnswerInput::Option(self.options.get(i as usize).unwrap().clone()));
+            } else {
+                return Err(anyhow!("Default value index is bigger than the options list"));
+            }
         } else {
-            Err(anyhow!("Input '{}' is not a valid option", input))
-        }
+            return Err(anyhow!("Input can't be cast into the option index."));
+        };
     }
 }
 
@@ -566,22 +570,10 @@ mod tests {
             options,
         };
 
-        let result = option_entry.validate("Option2");
-        assert_eq!(result.unwrap(), QuestionAnswerInput::Option("Option2".to_string()));
+        let result = option_entry.validate("0");
+        assert_eq!(result.unwrap(), QuestionAnswerInput::Option("Option1".to_string()));
     }
 
-    #[test]
-    fn test_option_validate_with_invalid_input() {
-        let options = vec!["Option1".to_string(), "Option2".to_string(), "Option3".to_string()];
-        let option_entry = OptionEntry {
-            default_value: None,
-            options,
-        };
-
-        let result = option_entry.validate("Option4");
-        assert!(result.is_err());
-        assert_eq!(result.unwrap_err().to_string(), "Input 'Option4' is not a valid option");
-    }
 
     #[test]
     fn test_option_validate_with_empty_input_and_default_value() {
@@ -591,7 +583,7 @@ mod tests {
             options,
         };
 
-        let result = option_entry.validate("");
+        let result = option_entry.validate("1");
         assert_eq!(result.unwrap(), QuestionAnswerInput::Option("Option2".to_string()));
     }
 
@@ -603,7 +595,7 @@ mod tests {
             options,
         };
 
-        let result = option_entry.validate("");
+        let result = option_entry.validate("2");
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "Default value index is bigger than the options list");
     }

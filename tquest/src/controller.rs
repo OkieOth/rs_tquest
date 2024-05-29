@@ -82,7 +82,10 @@ fn enter_sub_block<V: QuestionaireView> (
                 end_text,
                 sub_block.help_text.as_deref(),
             )? {
-                ProceedScreenResult::Canceled => return Ok(ControllerResult::Canceled),
+                ProceedScreenResult::Canceled => {
+                    //return Ok(ControllerResult::Canceled)
+                    break;
+                },
                 ProceedScreenResult::Proceeded(b) => {
                     if ! b {
                         return Ok(ControllerResult::Canceled);
