@@ -1,31 +1,20 @@
-use std::{
-    io::{self, Stdout},
-};
 
-use anyhow::{Context, Result};
-use crossterm::{
-    event::{self, Event, KeyCode, KeyEventKind},
-    execute,
-    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
-};
+use anyhow::Result;
+use colored::Colorize;
+use std::io;
 
-use ratatui::{
-    prelude::*,
-    widgets::{Block, Borders, Padding, Paragraph, Wrap, LineGauge},
-};
+use crate::questionaire::{QuestionAnswerInput, QuestionEntry, StringEntry, 
+    IntEntry, FloatEntry, BoolEntry, OptionEntry, EntryType};
 
 
-use crate::questionaire::{QuestionAnswerInput, QuestionEntry};
-
-const ARROW_LEFT: &str = "←";
-const ARROW_RIGHT: &str = "→";
-
-
+/// This is returned for normal question entries.
 pub enum QuestionScreenResult {
     Canceled,
     Proceeded(QuestionAnswerInput)
 }
 
+/// This type is returned for questions, where a decision how to
+/// proceed is needed
 pub enum ProceedScreenResult {
     Canceled,
     Proceeded(bool)
@@ -33,581 +22,252 @@ pub enum ProceedScreenResult {
 
 
 pub trait QuestionaireView {
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult>;
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry) -> Result<QuestionScreenResult>;
+    fn print_title<'a>(&mut self, title: &str);
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T, question_count: usize, current: usize) -> Result<ProceedScreenResult>;
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize) -> Result<QuestionScreenResult>;
 }
 
-
-#[derive(Default)]
-pub enum UiState {
-    Help,
-    #[default]
-    Question,
-    Scrolling,
+trait ViewHelper {
+    fn get_input_hint(&self) -> String;
 }
 
-#[derive(Default)]
-pub enum InputMode {
-    Normal,
-    #[default]
-    Editing,
-}
 
 pub struct Ui {
-    terminal: Terminal<CrosstermBackend<Stdout>>,
-    input_mode: InputMode,
-    progress: f32,
-    show_popup: bool,
-    cursor_position_by_char: usize,
-    input: String,
-    state: UiState,
-    max_input_diplay_len: usize,
-    input_display_start: usize,
-    title: String,
 }
 
 
 impl Ui  {
-    pub fn new(title: &str) -> Result<Self> {
-        let terminal = setup_terminal().context("setup failed")?;
+    pub fn new() -> Result<Self> {
         Ok(Self {
-            input_mode: InputMode::Editing,
-            terminal,
-            progress: 0.0,
-            show_popup: false,
-            cursor_position_by_char: 0,
-            input: "".to_string(),
-            max_input_diplay_len: 0,
-            input_display_start: 0,
-            state: UiState::Question,
-            title: title.to_string(),
         }) 
     }
-
-    fn move_cursor_left(&mut self) {
-        if (self.cursor_position_by_char == 0) && (self.input_display_start > 0) {
-            //if (self.input.chars().count() - self.input_display_start) > self.max_input_diplay_len  {
-                self.input_display_start = self.input_display_start.saturating_sub(1);
-            //}
-        } else {
-            if (self.input.chars().count() - self.input_display_start) < self.max_input_diplay_len  {
-                self.input_display_start = self.input_display_start.saturating_sub(1);
-                //self.input_display_start = 0
-            }
-            let cursor_moved_left = self.cursor_position_by_char.saturating_sub(1);
-            self.cursor_position_by_char = self.clamp_cursor(cursor_moved_left);
-        }
-    }
-
-    fn move_cursor_right(&mut self) {
-        let cursor_moved_right = self.cursor_position_by_char.saturating_add(1);
-        if cursor_moved_right < self.max_input_diplay_len {
-            if (self.input.chars().count() - self.input_display_start) >= cursor_moved_right {
-                self.cursor_position_by_char = self.clamp_cursor(cursor_moved_right);
-            }
-        } else {
-            if (self.input.chars().count() - self.input_display_start) >= self.max_input_diplay_len {
-                self.input_display_start = self.input_display_start.saturating_add(1);
-            }
-        }
-    }
-
-
-
-    fn enter_char(&mut self, new_char: char) {
-        let index = byte_index(&self.input, self.cursor_position_by_char, self.input_display_start);
-        self.input.insert(index, new_char);
-        self.move_cursor_right();
-    }
-
-    fn delete_char_before(&mut self) {
-        let is_not_cursor_leftmost = self.cursor_position_by_char != 0;
-        if is_not_cursor_leftmost {
-
-            let current_index = self.input_display_start + self.cursor_position_by_char;
-            let from_left_to_current_index = current_index - 1;
-
-            let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
-            let after_char_to_delete = self.input.chars().skip(current_index);
-
-            self.input = before_char_to_delete.chain(after_char_to_delete).collect();
-            self.move_cursor_left();
-        }
-    }
-
-    fn delete_char_under(&mut self) {
-        let is_not_cursor_rightmost = self.cursor_position_by_char < (self.input.chars().count() - self.input_display_start);
-        if is_not_cursor_rightmost {
-
-            let current_index = self.input_display_start + self.cursor_position_by_char;
-            let from_left_to_current_index = current_index;
-
-            let before_char_to_delete = self.input.chars().take(from_left_to_current_index);
-            let after_char_to_delete = self.input.chars().skip(current_index + 1);
-
-            self.input = before_char_to_delete.chain(after_char_to_delete).collect();
-        }
-    }
-
-
-    fn clamp_cursor(&self, new_cursor_pos: usize) -> usize {
-        new_cursor_pos.clamp(0, self.max_input_diplay_len)
-    }
-
-    fn reset_cursor(&mut self) {
-        self.cursor_position_by_char = 0;
-    }
-
-    fn submit_message(&mut self) {
-        self.input.clear();
-        self.reset_cursor();
-    }
-
-    fn get_scroll_info(&mut self) -> String {
-        let c = self.input.chars().count();
-        let s = " ".repeat(self.max_input_diplay_len - 2);
-        let left = if self.input_display_start > 0 {
-            ARROW_LEFT
-        } else {
-            " "
-        };
-        let right = if (c - self.input_display_start) > self.max_input_diplay_len - 1 {
-            ARROW_RIGHT
-        } else {
-            " "
-        };
-        let ret = format!("{}{}{}", left, s, right);
-
-        // // debug - start
-        // let max_input_disply_len = self.max_input_diplay_len.to_string();
-        // let debug_str = " ".repeat(max_input_disply_len.len());
-        // let ret = ret.replacen(&debug_str, &max_input_disply_len, 1);
-        // // debug - end
-        ret
-    }
-
-    fn get_input_to_display(&mut self) -> String {
-        let c = self.input.chars().count();
-        if c - self.input_display_start > self.max_input_diplay_len {
-            return self.input.chars().skip(self.input_display_start).take(self.max_input_diplay_len - 1).collect();
-        } else {
-            return self.input.chars().skip(self.input_display_start).take(c - self.input_display_start).collect();
-        }
-    }
-    
 }
 
-impl Drop for Ui {
-    fn drop(&mut self) {
-        _ = restore_terminal(&mut self.terminal).context("restore terminal failed");
-    }
-}
 
 impl QuestionaireView for Ui {
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, help_text: T) -> Result<ProceedScreenResult> {
+    fn print_title<'a>(&mut self, title: &str) {
+        println!("\n________________________________________________________________________________");
+        println!("\n{}\n", title.bold().underline());
+    }
+
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, help_text: T, question_count: usize, current: usize) -> Result<ProceedScreenResult> {
+        const YES: &str = "yes";
+        const NO: &str = "no";
+
+        fn get_valid_input_hint<'b>(has_help: bool) -> &'b str{
+            if has_help {
+                "type [y|n] or only ENTER for yes (for more info type 'h')"
+            } else {
+                "type [y|n] or only ENTER for yes"
+            }
+        }
+
+        fn print_wrong_input(has_help: bool) {
+            let msg = format!("Wrong input! {}", get_valid_input_hint(has_help));
+            println!("\n{}\n",msg.yellow());
+        }
+
+        fn print_result_and_return(input: bool) -> Result<ProceedScreenResult> {
+            if input {
+                println!(">>> {}", format!("{}", YES).green());
+
+            } else {
+                println!(">>> {}", format!("{}", NO).green());
+            }
+            Ok(ProceedScreenResult::Proceeded(input))
+        }
+
         let ht = help_text.into();
+        let text_to_display = if current != 0 {
+            format!("[{}/{}] {}", current, question_count, text)
+        } else {
+            text.to_string()
+        };
+        println!("\n{} ({})", text_to_display.bold(), get_valid_input_hint(ht.is_some()).dimmed());
+
         loop {
-            self.terminal.draw(|f| render_proceed_screen(f, &self.title, text, ht, 0.6))?;
-            if let Event::Key(key) = event::read()? {
-                match self.input_mode {
-                    InputMode::Normal => match key.code {
-                        KeyCode::Char('e') => {
-                            self.input_mode = InputMode::Editing;
-                        }
-                        KeyCode::Esc => {
-                            return Ok(ProceedScreenResult::Canceled);
-                        }
-                        _ => {}
-                    },
-                    InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
-                        KeyCode::Enter => {
-                            // validate input
-                            self.submit_message();
-                            return Ok(ProceedScreenResult::Proceeded((true)))
-                        },
-                        KeyCode::Char(to_insert) => {
-                            self.enter_char(to_insert);
-                        }
-                        KeyCode::Esc => {
-                            return Ok(ProceedScreenResult::Canceled);
-                        }
-                        _ => {}
-                    },
-                    InputMode::Editing => {}
+            let mut input = String::new(); 
+            io::stdin().read_line(&mut input).expect("error while reading from stdin");
+            match input.to_lowercase().as_str().trim() {
+                "y" | "yes" => return print_result_and_return(true),
+                "n" | "no" => return print_result_and_return(false),
+                "h" | "help" | "?" => {
+                    if let Some(help_text_str) = ht {
+                        println!("\n{}\n", help_text_str);
+                        println!("\n{}\n",get_valid_input_hint(ht.is_some()).dimmed());
+                    } else {
+                        print_wrong_input(ht.is_some());
+                    }
+                },
+                other => {
+                    if other.len() == 0 {
+                        return print_result_and_return(true);
+                    } else {
+                        print_wrong_input(ht.is_some());
+                    }
                 }
             }
         }
-        Ok(ProceedScreenResult::Canceled)
     }
 
-    fn show_question_screen(&mut self, _question_entry: &QuestionEntry) -> Result<QuestionScreenResult>{
-        // TODO
-        // let _ht = help_text.into();
-        // loop {
-        //     terminal.draw(|f| render_app(f, self))?;
-        //     if let Event::Key(key) = event::read()? {
-        //         match self.input_mode {
-        //             InputMode::Normal => match key.code {
-        //                 KeyCode::Char('e') => {
-        //                     self.input_mode = InputMode::Editing;
-        //                 }
-        //                 KeyCode::Char('q') => {
-        //                     return Ok(ProceedScreenResult::Canceled);
-        //                 }
-        //                 _ => {}
-        //             },
-        //             InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
-        //                 KeyCode::Enter => {
-        //                     // validate input
-        //                     self.submit_message();
-        //                     return Ok(ProceedScreenResult::Proceeded((true)))
-        //                 },
-        //                 KeyCode::Char(to_insert) => {
-        //                     self.enter_char(to_insert);
-        //                 }
-        //                 KeyCode::Backspace => {
-        //                     self.delete_char_before();
-        //                 }
-        //                 KeyCode::Delete => {
-        //                     self.delete_char_under();
-        //                 }
-        //                 KeyCode::Left => {
-        //                     self.move_cursor_left();
-        //                 }
-        //                 KeyCode::Right => {
-        //                     self.move_cursor_right();
-        //                 }
-        //                 KeyCode::Esc => {
-        //                     self.input_mode = InputMode::Normal;
-        //                 }
-        //                 _ => {}
-        //             },
-        //             InputMode::Editing => {}
-        //         }
-        //     }
-        // }
-        Ok(QuestionScreenResult::Canceled)
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize) -> Result<QuestionScreenResult>{
+        fn get_valid_input_hint(question_entry: &QuestionEntry) -> String {
+            let mut s: String = match &question_entry.entry_type {
+                EntryType::String (s) => {
+                    s.get_input_hint()
+                },
+                EntryType::Int(s) => {
+                    s.get_input_hint()
+                },
+                EntryType::Float(s) => {
+                    s.get_input_hint()
+                },
+                EntryType::Bool(s) => {
+                    s.get_input_hint()
+                },
+                EntryType::Option(s) => {
+                    s.get_input_hint()
+                },
+                _ => {
+                    "".to_string()
+                },
+            };
+            if question_entry.help_text.is_some() {
+                s.push_str(" (for more info type 'h')");
+            };
+            s
+        }
+
+        fn print_result_and_return(input_str: &str, ret: QuestionAnswerInput) -> Result<QuestionScreenResult> {
+            println!(">>> {}", format!("{}", input_str).green());
+            return Ok(QuestionScreenResult::Proceeded(ret));
+        }
+
+        fn print_wrong_input(question_entry: &QuestionEntry) {
+            let msg = format!("Wrong input! {}", get_valid_input_hint(question_entry));
+            println!("{}",msg.yellow());
+        }
+
+        let text_to_display = if let Some(p) = question_entry.pos {
+            format!("[{}/{}] {}", p, question_count, question_entry.query_text)
+        } else {
+            question_entry.query_text.clone()
+        };
+        println!("\n{} ({})", text_to_display.bold(), get_valid_input_hint(&question_entry).dimmed());
+
+        loop {
+            let mut input = String::new(); 
+            io::stdin().read_line(&mut input).expect("error while reading from stdin");
+            let str = input.trim();
+            if let Ok(ret) = match &question_entry.entry_type {
+                EntryType::String (s) => {
+                    s.validate(&str)
+                },
+                EntryType::Int(s) => {
+                    s.validate(&str)
+                },
+                EntryType::Float(s) => {
+                    s.validate(&str)
+                },
+                EntryType::Bool(s) => {
+                    s.validate(&str)
+                },
+                EntryType::Option(s) => {
+                    s.validate(&str)
+                },
+                _ => {
+                    panic!("unexpected EntryType for question screen");
+                }
+            } {
+                // validate was ok ...
+                return print_result_and_return(str, ret);
+            } else {
+                print_wrong_input(question_entry);
+            }
+        }
     }
 }
 
-fn setup_terminal() -> Result<Terminal<CrosstermBackend<Stdout>>> {
-    let mut stdout = io::stdout();
-    enable_raw_mode().context("failed to enable raw mode")?;
-    execute!(stdout, EnterAlternateScreen).context("unable to enter alternate screen")?;
-    Terminal::new(CrosstermBackend::new(stdout)).context("creating terminal failed")
+
+impl ViewHelper for StringEntry {
+    fn get_input_hint(&self) -> String {
+        let mut s = "Please enter a string and take it with ENTER".to_string();
+        if let Some(def) = self.default_value.as_ref() {
+            s.push_str(&format!(", default: {}", def));
+        }
+        if let Some(min) = self.min_length {
+            s.push_str(&format!(", min-length: {}", min));
+        }
+        if let Some(max) = self.max_length {
+            s.push_str(&format!(", max-length: {}", max));
+        }
+        if let Some(regexp) = self.reqexp.as_ref() {
+            s.push_str(&format!(", regexp: {}", regexp));
+        }
+        s
+    }
 }
 
-fn restore_terminal(terminal: &mut Terminal<CrosstermBackend<Stdout>>) -> Result<()> {
-    disable_raw_mode().context("failed to disable raw mode")?;
-    execute!(terminal.backend_mut(), LeaveAlternateScreen)
-        .context("unable to switch to main screen")?;
-    terminal.show_cursor().context("unable to show cursor")
+impl ViewHelper for IntEntry {
+    fn get_input_hint(&self) -> String {
+        let mut s = "Please enter an integer and take it with ENTER".to_string();
+        if let Some(def) = self.default_value {
+            s.push_str(&format!(", default: {}", def));
+        }
+        if let Some(min) = self.min {
+            s.push_str(&format!(", min: {}", min));
+        }
+        if let Some(max) = self.max {
+            s.push_str(&format!(", max: {}", max));
+        }
+        s
+    }
 }
 
-fn byte_index(input: &str, cursor_position_by_char: usize, input_display_start: usize) -> usize {
-    input
-        .char_indices()
-        .map(|(i, _)| i)
-        .nth(cursor_position_by_char + input_display_start)
-        .unwrap_or(input.len())
+impl ViewHelper for FloatEntry {
+    fn get_input_hint(&self) -> String {
+        let mut s = "Please enter a floating point number (e.g. 1.123) and take it with ENTER.".to_string();
+        if let Some(def) = self.default_value {
+            s.push_str(&format!(", default: {}", def));
+        }
+        if let Some(min) = self.min {
+            s.push_str(&format!(", min: {}", min));
+        }
+        if let Some(max) = self.max {
+            s.push_str(&format!(", max: {}", max));
+        }
+        s
+    }
 }
 
-fn render_proceed_screen(frame: &mut Frame, title: &str, text: &str, help_text: Option<&str>, ratio: f64) {
-    let main_layout = Layout::new(
-        Direction::Vertical,
-        [
-            Constraint::Min(1),
-            Constraint::Length(1),
-            Constraint::Length(3),
-        ],
-    )
-    .margin(0)
-    .split(frame.size());
-    let max_input_diplay_len = (frame.size().width - 6) as usize;
-
-    // frame.render_widget(
-    //     Block::new().borders(Borders::TOP).title(ui.title),
-    //     main_layout[0],
-    // );
-
-    let question_txt = Paragraph::new(text).wrap(Wrap{trim: true});
-
-    let block = Block::new()
-        .borders(Borders::ALL)
-        .padding(Padding::uniform(1))
-        .border_style(Style::new().gray().bold().italic())
-        .title(title);
-
-    let inner = main_layout[0].inner(&Margin {
-        vertical: 0,
-        horizontal: 1,
-    });
-
-    frame.render_widget(question_txt.block(block), inner);
-
-
-
-    let navigation = Paragraph::new("(press 'y' to go on or 'n' to cancel, 'ESC' to quit)  ")
-    .right_aligned();
-    frame.render_widget(navigation, main_layout[1]);
-
-
-    // let inner_answer = main_layout[3].inner(&Margin {
-    //     vertical: 0,
-    //     horizontal: 1,
-    // });
-
-
-    // let mut text= Text::from(ui.get_input_to_display());
-    // text.push_line(ui.get_scroll_info());
-    // let input = Paragraph::new(text)
-    //     .style(match ui.input_mode {
-    //         InputMode::Normal => Style::default(),
-    //         InputMode::Editing => Style::default().fg(Color::Yellow),
-    //     })
-    //     .block(Block::default()
-    //         .border_style(
-    //             Style::new()
-    //                 .bold()
-    //                 .italic())
-    //         .borders(Borders::ALL).title("Answer: ")
-    //         .padding(Padding::horizontal(1)));
-    // frame.render_widget(input, inner_answer);
-
-    // match ui.input_mode {
-    //     InputMode::Normal =>
-    //         // Hide the cursor. `Frame` does this by default, so we don't need to do anything here
-    //         {}
-
-    //     InputMode::Editing => {
-    //         #[allow(clippy::cast_possible_truncation)]
-    //         frame.set_cursor(
-    //             inner_answer.x + ui.cursor_position_by_char as u16 + 2,
-    //             inner_answer.y + 1,
-    //         );
-    //     }
-    // }
-
-    // if ui.show_popup {
-    //     let help_txt = Paragraph::new("This is a quite long help text. I wonder how this will be rendered and if all parts of the text will be visible. :-/");
-
-    //     let block = Block::default().title("Help").borders(Borders::ALL);
-    //     let popup_area = centered_rect(60, 20, frame.size());
-    //     frame.render_widget(Clear, popup_area); //this clears out the background
-
-    //     frame.render_widget(help_txt.block(block), popup_area);
-    // }
-
-    let line_gauge = LineGauge::default()
-        .block(Block::new()
-            .borders(Borders::ALL)
-            .title(" Progress "))
-        .gauge_style(
-        Style::default()
-            .fg(Color::Yellow)
-            .bg(Color::Black)
-            .add_modifier(Modifier::BOLD),
-    )
-    .line_set(symbols::line::THICK)
-    .ratio(ratio);
-    let inner_gauge = main_layout[2].inner(&Margin {
-        vertical: 0,
-        horizontal: 1,
-    });
-
-    frame.render_widget(line_gauge, inner_gauge);
+impl ViewHelper for BoolEntry {
+    fn get_input_hint(&self) -> String {
+        let mut s = "Please enter 'y' for 'yes' or 'n' for 'no'. Take it with ENTER.".to_string();
+        if let Some(def) = self.default_value {
+            let def_str = if def { "[y]es" } else { "[n]o" };
+            s.push_str(&format!(", default: {}", def_str));
+        }
+        s
+    }
 }
 
+impl ViewHelper for OptionEntry {
+    fn get_input_hint(&self) -> String {
+        let mut s = "Please enter the number for one of this options and take it with ENTER.".to_string();
 
+        let default_index = if let Some(def) = self.default_value {
+            def
+        } else {
+            0
+        };
 
-fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
-    let popup_layout = Layout::vertical([
-        Constraint::Percentage((100 - percent_y) / 2),
-        Constraint::Percentage(percent_y),
-        Constraint::Percentage((100 - percent_y) / 2),
-    ])
-    .split(r);
-
-    Layout::horizontal([
-        Constraint::Percentage((100 - percent_x) / 2),
-        Constraint::Percentage(percent_x),
-        Constraint::Percentage((100 - percent_x) / 2),
-    ])
-    .split(popup_layout[1])[1]
-}
-
-#[cfg(test)]
-mod tests {
-    
-
-    // #[test]
-    // fn test_answer_scrolling_01() {
-    //     let test_input = "1234567890".to_string();
-    //     let mut ui = super::Ui::default();
-    //     ui.max_input_diplay_len = 20;
-    //     ui.input = test_input.clone();
-    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,0);
-    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
-
-    //     ui.move_cursor_left();
-    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,0);
-    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
-
-    //     ui.move_cursor_right();
-    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,1);
-    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
-
-    //     ui.move_cursor_left();
-    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,0);
-    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
-
-    //     ui.move_cursor_right();
-    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,1);
-    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
-
-    //     (0..7).for_each(|_| {
-    //         ui.move_cursor_right();
-    //     });
-    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,8);
-    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
-
-    //     ui.move_cursor_right();
-    //     ui.move_cursor_right();
-    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,10);
-    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
-
-    //     ui.move_cursor_right();
-    //     ui.move_cursor_right();
-    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,10);
-    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
-
-    //     ui.move_cursor_left();
-    //     ui.move_cursor_left();
-    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,8);
-    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
-
-    //     (0..8).for_each(|_| {
-    //         ui.move_cursor_left();
-    //     });
-    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,0);
-    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
-
-    //     ui.move_cursor_left();
-    //     ui.move_cursor_left();
-    //     ui.move_cursor_left();
-    //     assert_eq!(test_input.clone(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,0);
-    //     assert_eq!(" ".repeat(20),ui.get_scroll_info());
-
-    // }
-
-    // #[test]
-    // fn test_answer_scrolling_02() {
-    //     let test_input = "123456789012345678901234567890".to_string();
-    //     let mut ui = super::Ui::default();
-    //     ui.max_input_diplay_len = 20;
-    //     ui.input = test_input.clone();
-    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,0);
-    //     let scroll_info = format!("{}{}"," ".repeat(19), ARROW_RIGHT);
-    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
-
-    //     ui.move_cursor_left();
-    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,0);
-    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
-
-    //     ui.move_cursor_right();
-    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,1);
-    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
-
-    //     ui.move_cursor_left();
-    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,0);
-    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
-
-    //     ui.move_cursor_right();
-    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,1);
-    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
-
-    //     (0..18).for_each(|_| {
-    //         ui.move_cursor_right();
-    //     });
-    //     assert_eq!("1234567890123456789".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,0);
-    //     assert_eq!(ui.cursor_position_by_char,19);
-    //     assert_eq!(scroll_info.clone(), ui.get_scroll_info());
-
-    //     ui.move_cursor_right();
-    //     assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,1);
-    //     assert_eq!(ui.cursor_position_by_char,19);
-    //     let scroll_info2 = format!("{}{}{}", ARROW_LEFT, " ".repeat(18), ARROW_RIGHT);
-    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
-
-    //     ui.move_cursor_left();
-    //     assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,1);
-    //     assert_eq!(ui.cursor_position_by_char,18);
-    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
-
-    //     ui.move_cursor_left();
-    //     assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,1);
-    //     assert_eq!(ui.cursor_position_by_char,17);
-    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
-
-    //     (0..10).for_each(|_| {
-    //         ui.move_cursor_left();
-    //     });
-
-    //     assert_eq!("2345678901234567890".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,1);
-    //     assert_eq!(ui.cursor_position_by_char,7);
-    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
-
-    //     ui.enter_char('ß');
-    //     assert_eq!("2345678ß90123456789".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,1);
-    //     assert_eq!(ui.cursor_position_by_char,8);
-    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
-
-    //     (0..3).for_each(|_| {
-    //         ui.move_cursor_right();
-    //     });
-    //     ui.delete_char_before();
-    //     assert_eq!("2345678ß91234567890".to_string(),ui.get_input_to_display());
-    //     assert_eq!(ui.input_display_start,1);
-    //     assert_eq!(ui.cursor_position_by_char,10);
-    //     assert_eq!(scroll_info2.clone(), ui.get_scroll_info());
-
-    // }
+        for (i, o) in self.options.iter().enumerate() {
+            if i == default_index as usize {
+                s.push_str(&format!("\n  [{}] {} (default)", i, o));
+            } else {
+                s.push_str(&format!("\n  [{}] {}", i, o));
+            }
+        }
+        s
+    }
 }
