@@ -12,9 +12,9 @@ fn get_brother_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
                 StringEntry::builder()
                 .min_length(2)
                 .max_length(50)
-                .build().unwrap()
+                .build()
             ))
-            .build().unwrap(),
+            .build()
         ),
         QuestionaireEntry::Question (
             QuestionEntry::builder()
@@ -24,9 +24,9 @@ fn get_brother_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
             .entry_type(EntryType::String(
                 StringEntry::builder()
                 .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                .build().unwrap()
+                .build()
             ))
-            .build().unwrap()
+            .build()
         ),
     ]
 }
@@ -41,9 +41,9 @@ fn get_sister_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
                 StringEntry::builder()
                 .min_length(2)
                 .max_length(50)
-                .build().unwrap()
+                .build()
             ))
-            .build().unwrap(),
+            .build()
         ),
         QuestionaireEntry::Question (
             QuestionEntry::builder()
@@ -53,9 +53,9 @@ fn get_sister_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
             .entry_type(EntryType::String(
                 StringEntry::builder()
                 .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                .build().unwrap()
+                .build()
             ))
-            .build().unwrap()
+            .build()
         ),
     ]
 }
@@ -96,9 +96,9 @@ fn get_job_end_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
                 StringEntry::builder()
                 .min_length(2)
                 .max_length(100)
-                .build().unwrap()
+                .build()
             ))
-            .build().unwrap()
+            .build()
         ),
         QuestionaireEntry::Question(
             QuestionEntry::builder()
@@ -112,9 +112,9 @@ fn get_job_end_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
                     "I was laid off".to_string(),
                     "Other reason".to_string(),
                 ])
-                .build().unwrap()
+                .build()
             ))
-            .build().unwrap()
+            .build()
         )
     ]
 }
@@ -129,9 +129,9 @@ fn get_job_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
                 StringEntry::builder()
                 .min_length(2)
                 .max_length(200)
-                .build().unwrap()
+                .build()
             ))
-            .build().unwrap()
+            .build()
         ),
         QuestionaireEntry::Question(
             QuestionEntry::builder()
@@ -141,9 +141,9 @@ fn get_job_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
                 StringEntry::builder()
                 .min_length(2)
                 .max_length(100)
-                .build().unwrap()
+                .build()
             ))
-            .build().unwrap()
+            .build()
         ),
         QuestionaireEntry::Question(
             QuestionEntry::builder()
@@ -154,9 +154,9 @@ fn get_job_entries(id_pre: &str) -> Vec<QuestionaireEntry> {
                 StringEntry::builder()
                 .min_length(2)
                 .max_length(100)
-                .build().unwrap()
+                .build()
             ))
-            .build().unwrap()
+            .build()
         ),
         QuestionaireEntry::Block(
             SubBlock::builder()
@@ -184,9 +184,9 @@ fn build_questionaire() -> Questionaire {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(100)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap(),
+                    .build(),
                 ),
                 QuestionaireEntry::Question (
                     QuestionEntry::builder()
@@ -196,9 +196,9 @@ fn build_questionaire() -> Questionaire {
                     .entry_type(EntryType::String(
                         StringEntry::builder()
                         .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Block(
                     SubBlock::builder()

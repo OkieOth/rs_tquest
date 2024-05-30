@@ -56,9 +56,9 @@ mod test_helper {
                             StringEntry::builder()
                             .min_length(2)
                             .max_length(100)
-                            .build().unwrap()
+                            .build()
                         ))
-                        .build().unwrap(),
+                        .build()
                     ),
                     QuestionaireEntry::Question (
                         QuestionEntry::builder()
@@ -68,9 +68,9 @@ mod test_helper {
                         .entry_type(EntryType::String(
                             StringEntry::builder()
                             .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                            .build().unwrap()
+                            .build()
                         ))
-                        .build().unwrap()
+                        .build()
                     )
                 ])
             .build()
@@ -87,9 +87,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(50)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap(),
+                    .build()
                 ),
                 QuestionaireEntry::Question (
                     QuestionEntry::builder()
@@ -99,9 +99,9 @@ mod test_helper {
                     .entry_type(EntryType::String(
                         StringEntry::builder()
                         .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
             ]
         }
@@ -116,9 +116,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(50)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap(),
+                    .build()
                 ),
                 QuestionaireEntry::Question (
                     QuestionEntry::builder()
@@ -128,9 +128,9 @@ mod test_helper {
                     .entry_type(EntryType::String(
                         StringEntry::builder()
                         .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
             ]
         }
@@ -171,9 +171,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(100)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Question(
                     QuestionEntry::builder()
@@ -187,9 +187,9 @@ mod test_helper {
                             "I was laid off".to_string(),
                             "Other reason".to_string(),
                         ])
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 )
             ]
         }
@@ -204,9 +204,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(200)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Question(
                     QuestionEntry::builder()
@@ -216,9 +216,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(100)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Question(
                     QuestionEntry::builder()
@@ -229,9 +229,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(100)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Block(
                     SubBlock::builder()
@@ -258,9 +258,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(100)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap(),
+                    .build()
                 ),
                 QuestionaireEntry::Question (
                     QuestionEntry::builder()
@@ -270,9 +270,9 @@ mod test_helper {
                     .entry_type(EntryType::String(
                         StringEntry::builder()
                         .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Block(
                     SubBlock::builder()

@@ -163,7 +163,7 @@ fn run_sub_block<V: QuestionaireView> (
 
 #[cfg(test)]
 mod tests {
-    use crate::questionaire::{QuestionEntry, EntryType, StringEntry, OptionEntry, QuestionAnswerInput};
+    use crate::questionaire::{QuestionEntry, EntryType, StringEntry, QuestionAnswerInput};
     use crate::test_helper;
     use super::*;
 
@@ -224,9 +224,9 @@ mod tests {
                             StringEntry::builder()
                             .min_length(2)
                             .max_length(100)
-                            .build().unwrap()
+                            .build()
                         ))
-                        .build().unwrap(),
+                        .build()
                     ),
                     QuestionaireEntry::Question (
                         QuestionEntry::builder()
@@ -236,9 +236,9 @@ mod tests {
                         .entry_type(EntryType::String(
                             StringEntry::builder()
                             .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                            .build().unwrap()
+                            .build()
                         ))
-                        .build().unwrap()
+                        .build()
                     )
                 ])
             .build();
@@ -335,7 +335,7 @@ mod tests {
             fn print_title<'a>(&mut self, _title: &str) {
             }
 
-            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, _text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
                 let ret = match self.current_step {
                     0 => ProceedScreenResult::Proceeded(true),  // Start
                     3 => ProceedScreenResult::Proceeded(false), // Siblings
@@ -348,7 +348,7 @@ mod tests {
                 self.current_step += 1;
                 Ok(ret)
             }
-            fn show_question_screen(&mut self, question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
+            fn show_question_screen(&mut self, _question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
                 let ret = match self.current_step {
                     1 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("Homer".to_string())),
                     2 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("1956-03-12".to_string())),
@@ -400,7 +400,7 @@ mod tests {
             fn print_title<'a>(&mut self, _title: &str) {
             }
 
-            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, _text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
                 let ret = match self.current_step {
                     0 => ProceedScreenResult::Proceeded(true),  // Start
                     3 => ProceedScreenResult::Proceeded(false), // Siblings
@@ -435,7 +435,7 @@ mod tests {
         match c.run() {
             Ok(r) => {
                 match r {
-                    QuestionaireResult::Finished(ba) => {
+                    QuestionaireResult::Finished(_ba) => {
                         panic!("received cancel from a valid questionaire flow");
                     },
                     QuestionaireResult::Canceled => {

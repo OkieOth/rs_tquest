@@ -148,11 +148,7 @@ impl QuestionaireView for Ui {
             println!("{}",msg.yellow());
         }
 
-        let text_to_display = if let Some(p) = question_entry.pos {
-            format!("[{}/{}] {}", p, question_count, question_entry.query_text)
-        } else {
-            question_entry.query_text.clone()
-        };
+        let text_to_display = format!("[{}/{}] {}", question_entry.pos, question_count, question_entry.query_text);
         println!("\n{} ({})", text_to_display.bold(), get_valid_input_hint(&question_entry).dimmed());
 
         loop {

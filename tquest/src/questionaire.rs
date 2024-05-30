@@ -1,13 +1,13 @@
 //! Main types of the questionaire implementation
 //! 
-use std::str::FromStr;
+use std::{default, str::FromStr};
 
 use builder_m4cro::{Builder, BuilderFromDefault};
 use anyhow::{Result, anyhow};
 use regex::{self, Regex};
 
 /// Expected string entry
-#[derive(Debug, Builder, Clone)]
+#[derive(Debug, BuilderFromDefault, Clone, Default)]
 pub struct StringEntry {
     pub default_value: Option<String>,
     pub reqexp: Option<String>,
@@ -46,7 +46,7 @@ impl StringEntry {
 
 
 /// Expected int entry
-#[derive(Debug, Builder, Clone)]
+#[derive(Debug, BuilderFromDefault, Default, Clone)]
 pub struct IntEntry {
     pub default_value: Option<i32>,
     pub max: Option<i32>,
@@ -82,7 +82,7 @@ impl IntEntry {
 }
 
 /// Expected floating point entry
-#[derive(Debug, Builder, Clone)]
+#[derive(Debug, BuilderFromDefault, Clone, Default)]
 pub struct FloatEntry {
     pub default_value: Option<f32>,
     pub max: Option<f32>,
@@ -118,7 +118,7 @@ impl FloatEntry {
 }
 
 /// Expected bool entry
-#[derive(Debug, Builder, Clone)]
+#[derive(Debug, BuilderFromDefault, Clone, Default)]
 pub struct BoolEntry {
     pub default_value: Option<bool>,
 }
@@ -141,7 +141,7 @@ impl BoolEntry {
 }
 
 /// Expected String entry based on a number of predefined options
-#[derive(Debug, Builder, Clone)]
+#[derive(Debug, BuilderFromDefault, Clone, Default)]
 pub struct OptionEntry {
     /// represents the index of the array, used as default value
     pub default_value: Option<u32>,
@@ -187,6 +187,12 @@ pub enum EntryType {
     InfoTxt,
 }
 
+impl Default for EntryType {
+    fn default() -> Self{
+        EntryType::String(StringEntry::default())
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum QuestionaireEntry {
     Block(SubBlock),
@@ -206,10 +212,11 @@ pub struct SubBlock {
     pub loop_over_entries: bool,
 }
 
-#[derive(Builder, Debug, Clone)]
+#[derive(BuilderFromDefault, Debug, Clone, Default)]
 pub struct QuestionEntry {
     pub id: String,
-    pub pos: Option<usize>,
+    pub pos: usize,
+    pub required: bool,
     pub query_text: String,
     pub help_text: Option<String>,
     pub entry_type: EntryType,
@@ -274,7 +281,7 @@ impl <'a> QuestionaireBuilder<'a> {
             for q in block.entries.iter_mut() {
                 match q {
                     QuestionaireEntry::Question(e) => {
-                        e.pos = Some(counter);
+                        e.pos = counter;
                         counter += 1;
                     },
                     QuestionaireEntry::Block(b) => {
@@ -290,7 +297,7 @@ impl <'a> QuestionaireBuilder<'a> {
             for q in questions.iter_mut() {
                 match q {
                     QuestionaireEntry::Question(e) => {
-                        e.pos = Some(counter);
+                        e.pos = counter;
                         counter += 1;
                     },
                     QuestionaireEntry::Block(b) => {
@@ -371,7 +378,7 @@ mod tests {
         for e in questionaire.init_block.entries {
             match e {
                 QuestionaireEntry::Question(q) => {
-                    assert_eq!(counter, q.pos.unwrap());
+                    assert_eq!(counter, q.pos);
                     counter += 1;
                 },
                 QuestionaireEntry::Block(b) => {
