@@ -157,19 +157,19 @@ impl QuestionaireView for Ui {
             let str = input.trim();
             if let Ok(ret) = match &question_entry.entry_type {
                 EntryType::String (s) => {
-                    s.validate(&str)
+                    s.validate(&str, question_entry.required)
                 },
                 EntryType::Int(s) => {
-                    s.validate(&str)
+                    s.validate(&str, question_entry.required)
                 },
                 EntryType::Float(s) => {
-                    s.validate(&str)
+                    s.validate(&str, question_entry.required)
                 },
                 EntryType::Bool(s) => {
-                    s.validate(&str)
+                    s.validate(&str, question_entry.required)
                 },
                 EntryType::Option(s) => {
-                    s.validate(&str)
+                    s.validate(&str, question_entry.required)
                 },
                 _ => {
                     panic!("unexpected EntryType for question screen");

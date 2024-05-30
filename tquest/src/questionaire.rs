@@ -16,11 +16,16 @@ pub struct StringEntry {
 }
 
 impl StringEntry {
-    pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
+    pub fn validate<'a>(&self, input: &'a str, required: bool) -> Result<QuestionAnswerInput> {
         if input.len() == 0 {
             if let Some(def_value) = self.default_value.as_ref() {
-                return Ok(QuestionAnswerInput::String(def_value.clone()));
+                return Ok(QuestionAnswerInput::String(Some(def_value.clone())));
             } else {
+                if ! required {
+                    return Ok(QuestionAnswerInput::String(None));
+                } else {
+
+                }
                 return Err(anyhow!("No default value is set. Input is needed."));
             }
         }
@@ -40,7 +45,7 @@ impl StringEntry {
                 return Err(anyhow!("Max input len not respected"));
             }
         }
-        Ok(QuestionAnswerInput::String(input.to_string()))
+        Ok(QuestionAnswerInput::String(Some(input.to_string())))
     }
 }
 
@@ -54,12 +59,16 @@ pub struct IntEntry {
 }
 
 impl IntEntry {
-    pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
+    pub fn validate<'a>(&self, input: &'a str, required: bool) -> Result<QuestionAnswerInput> {
         if input.len() == 0 {
             if let Some(def_value) = self.default_value {
-                return Ok(QuestionAnswerInput::Int(def_value));
+                return Ok(QuestionAnswerInput::Int(Some(def_value)));
             } else {
-                return Err(anyhow!("No default value is set. Input is needed."));
+                if ! required {
+                    return Ok(QuestionAnswerInput::Int(None));
+                } else {
+                    return Err(anyhow!("No default value is set. Input is needed."));
+                }
             }
         }
         let input_value = if let Ok(i) = input.parse() {
@@ -77,7 +86,7 @@ impl IntEntry {
                 return Err(anyhow!("Input doesn't respect max value constraint."));
             }
         }
-        Ok(QuestionAnswerInput::Int(input_value))
+        Ok(QuestionAnswerInput::Int(Some(input_value)))
     }
 }
 
@@ -90,12 +99,16 @@ pub struct FloatEntry {
 }
 
 impl FloatEntry {
-    pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
+    pub fn validate<'a>(&self, input: &'a str, required: bool) -> Result<QuestionAnswerInput> {
         if input.len() == 0 {
             if let Some(def_value) = self.default_value {
-                return Ok(QuestionAnswerInput::Float(def_value));
+                return Ok(QuestionAnswerInput::Float(Some(def_value)));
             } else {
-                return Err(anyhow!("No default value is set. Input is needed."));
+                if ! required {
+                    return Ok(QuestionAnswerInput::Float(None));
+                } else {
+                    return Err(anyhow!("No default value is set. Input is needed."));
+                }
             }
         }
         let input_value: f32 = if let Ok(i) = input.parse() {
@@ -113,7 +126,7 @@ impl FloatEntry {
                 return Err(anyhow!("Input doesn't respect max value constraint."));
             }
         }
-        Ok(QuestionAnswerInput::Float(input_value))
+        Ok(QuestionAnswerInput::Float(Some(input_value)))
     }
 }
 
@@ -124,17 +137,21 @@ pub struct BoolEntry {
 }
 
 impl BoolEntry {
-    pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
+    pub fn validate<'a>(&self, input: &'a str, required: bool) -> Result<QuestionAnswerInput> {
         if input.len() == 0 {
             if let Some(def_value) = self.default_value {
-                return Ok(QuestionAnswerInput::Bool(def_value));
+                return Ok(QuestionAnswerInput::Bool(Some(def_value)));
             } else {
-                return Err(anyhow!("No default value is set. Input is needed."));
+                if ! required {
+                    return Ok(QuestionAnswerInput::Bool(None));
+                } else {
+                    return Err(anyhow!("No default value is set. Input is needed."));
+                }
             }
         }
         match input.to_lowercase().as_str() {
-            "y" | "yes" | "true" => Ok(QuestionAnswerInput::Bool(true)),
-            "n" | "no" | "false" => Ok(QuestionAnswerInput::Bool(false)),
+            "y" | "yes" | "true" => Ok(QuestionAnswerInput::Bool(Some(true))),
+            "n" | "no" | "false" => Ok(QuestionAnswerInput::Bool(Some(false))),
             _ => return Err(anyhow!("Input can not be cast into a bool value.")),
         }
     }
@@ -151,13 +168,17 @@ pub struct OptionEntry {
 }
 
 impl OptionEntry {
-    pub fn validate<'a>(&self, input: &'a str) -> Result<QuestionAnswerInput> {
+    pub fn validate<'a>(&self, input: &'a str, required: bool) -> Result<QuestionAnswerInput> {
         if input.len() == 0 {
             if let Some(def_value) = self.default_value {
                 if def_value < self.options.len() as u32 {
-                    return Ok(QuestionAnswerInput::Option(self.options.get(def_value as usize).unwrap().clone()));
+                    return Ok(QuestionAnswerInput::Option(Some(self.options.get(def_value as usize).unwrap().clone())));
                 } else {
-                    return Err(anyhow!("Default value index is bigger than the options list"));
+                    if ! required {
+                        return Ok(QuestionAnswerInput::Option(None));
+                    } else {
+                        return Err(anyhow!("Default value index is bigger than the options list"));
+                    }
                 }
             } else {
                 return Err(anyhow!("No default value is set. Input is needed."));
@@ -165,7 +186,7 @@ impl OptionEntry {
         }
         if let Ok(i) = input.parse::<usize>() {
             if i < self.options.len() {
-                return Ok(QuestionAnswerInput::Option(self.options.get(i as usize).unwrap().clone()));
+                return Ok(QuestionAnswerInput::Option(Some(self.options.get(i as usize).unwrap().clone())));
             } else {
                 return Err(anyhow!("Default value index is bigger than the options list"));
             }
@@ -348,11 +369,11 @@ pub enum AnswerEntry {
 
 #[derive(Debug, PartialEq)]
 pub enum QuestionAnswerInput {
-    String(String),
-    Int(i32),
-    Float(f32),
-    Bool(bool),
-    Option(String),
+    String(Option<String>),
+    Int(Option<i32>),
+    Float(Option<f32>),
+    Bool(Option<bool>),
+    Option(Option<String>),
 }
 
 #[derive(Debug, Default)]
@@ -417,8 +438,8 @@ mod tests {
             max_length: None,
             reqexp: None,
         };
-        assert!(entry.validate("12345").is_ok());
-        assert!(entry.validate("1234").is_err());
+        assert!(entry.validate("12345", true).is_ok());
+        assert!(entry.validate("1234", true).is_err());
     }
 
     #[test]
@@ -429,8 +450,8 @@ mod tests {
             max_length: Some(5),
             reqexp: None,
         };
-        assert!(entry.validate("12345").is_ok());
-        assert!(entry.validate("123456").is_err());
+        assert!(entry.validate("12345", true).is_ok());
+        assert!(entry.validate("123456", true).is_err());
     }
 
     #[test]
@@ -441,8 +462,8 @@ mod tests {
             max_length: None,
             reqexp: Some(r"^\d+$".to_string()),
         };
-        assert!(entry.validate("12345").is_ok());
-        assert!(entry.validate("1234a").is_err());
+        assert!(entry.validate("12345", true).is_ok());
+        assert!(entry.validate("1234a", true).is_err());
     }
 
     #[test]
@@ -453,12 +474,12 @@ mod tests {
             max_length: Some(5),
             reqexp: Some(r"^\d+$".to_string()),
         };
-        assert!(entry.validate("123").is_ok());
-        assert!(entry.validate("1234").is_ok());
-        assert!(entry.validate("12345").is_ok());
-        assert!(entry.validate("12").is_err());
-        assert!(entry.validate("123456").is_err());
-        assert!(entry.validate("12a34").is_err());
+        assert!(entry.validate("123", true).is_ok());
+        assert!(entry.validate("1234", true).is_ok());
+        assert!(entry.validate("12345", true).is_ok());
+        assert!(entry.validate("12", true).is_err());
+        assert!(entry.validate("123456", true).is_err());
+        assert!(entry.validate("12a34", true).is_err());
     }
 
     #[test]
@@ -469,7 +490,7 @@ mod tests {
             max_length: None,
             reqexp: None,
         };
-        assert!(entry.validate("any string").is_ok());
+        assert!(entry.validate("any string", true).is_ok());
     }
 
     #[test]
@@ -482,14 +503,14 @@ mod tests {
         };
 
         // Valid input that meets all constraints
-        assert_eq!(entry.validate("123").unwrap(), QuestionAnswerInput::String("123".to_string()));
-        assert_eq!(entry.validate("1234").unwrap(), QuestionAnswerInput::String("1234".to_string()));
-        assert_eq!(entry.validate("12345").unwrap(), QuestionAnswerInput::String("12345".to_string()));
+        assert_eq!(entry.validate("123", true).unwrap(), QuestionAnswerInput::String(Some("123".to_string())));
+        assert_eq!(entry.validate("1234", true).unwrap(), QuestionAnswerInput::String(Some("1234".to_string())));
+        assert_eq!(entry.validate("12345", true).unwrap(), QuestionAnswerInput::String(Some("12345".to_string())));
 
         // Invalid inputs
-        assert!(entry.validate("12").is_err()); // Too short
-        assert!(entry.validate("123456").is_err()); // Too long
-        assert!(entry.validate("12a34").is_err()); // Invalid format (non-digit character)
+        assert!(entry.validate("12", true).is_err()); // Too short
+        assert!(entry.validate("123456", true).is_err()); // Too long
+        assert!(entry.validate("12a34", true).is_err()); // Invalid format (non-digit character)
     }
 
     #[test]
@@ -499,8 +520,8 @@ mod tests {
             max: None,
             min: None,
         };
-        let result = entry.validate("");
-        assert_eq!(result.unwrap(), QuestionAnswerInput::Int(10));
+        let result = entry.validate("", true);
+        assert_eq!(result.unwrap(), QuestionAnswerInput::Int(Some(10)));
     }
 
     #[test]
@@ -510,7 +531,7 @@ mod tests {
             max: None,
             min: None,
         };
-        let result = entry.validate("");
+        let result = entry.validate("", true);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "No default value is set. Input is needed.");
     }
@@ -522,7 +543,7 @@ mod tests {
             max: None,
             min: None,
         };
-        let result = entry.validate("abc");
+        let result = entry.validate("abc", true);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "Input can not be cast into an int value.");
     }
@@ -534,8 +555,8 @@ mod tests {
             max: Some(100),
             min: Some(1),
         };
-        let result = entry.validate("50");
-        assert_eq!(result.unwrap(), QuestionAnswerInput::Int(50));
+        let result = entry.validate("50", true);
+        assert_eq!(result.unwrap(), QuestionAnswerInput::Int(Some(50)));
     }
 
     #[test]
@@ -545,7 +566,7 @@ mod tests {
             max: Some(100),
             min: Some(20),
         };
-        let result = entry.validate("10");
+        let result = entry.validate("10", true);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "Input doesn't respect min value constraint.");
     }
@@ -557,7 +578,7 @@ mod tests {
             max: Some(100),
             min: Some(1),
         };
-        let result = entry.validate("150");
+        let result = entry.validate("150", true);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "Input doesn't respect max value constraint.");
     }
@@ -565,63 +586,63 @@ mod tests {
     #[test]
     fn test_float_validate_with_valid_input() {
         let entry = FloatEntry { default_value: None, max: None, min: None };
-        let result = entry.validate("42.0");
-        assert_eq!(result.unwrap(), QuestionAnswerInput::Float(42.0));
+        let result = entry.validate("42.0", true);
+        assert_eq!(result.unwrap(), QuestionAnswerInput::Float(Some(42.0)));
     }
 
     #[test]
     fn test_float_validate_with_empty_input_and_default() {
         let entry = FloatEntry { default_value: Some(3.14), max: None, min: None };
-        let result = entry.validate("");
-        assert_eq!(result.unwrap(), QuestionAnswerInput::Float(3.14));
+        let result = entry.validate("", true);
+        assert_eq!(result.unwrap(), QuestionAnswerInput::Float(Some(3.14)));
     }
 
     #[test]
     fn test_float_validate_with_empty_input_no_default() {
         let entry = FloatEntry { default_value: None, max: None, min: None };
-        let result = entry.validate("");
+        let result = entry.validate("", true);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_float_validate_with_invalid_input() {
         let entry = FloatEntry { default_value: None, max: None, min: None };
-        let result = entry.validate("not_a_float");
+        let result = entry.validate("not_a_float", true);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_float_validate_with_input_less_than_min() {
         let entry = FloatEntry { default_value: None, max: None, min: Some(10.0) };
-        let result = entry.validate("5.0");
+        let result = entry.validate("5.0", true);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_float_validate_with_input_greater_than_max() {
         let entry = FloatEntry { default_value: None, max: Some(10.0), min: None };
-        let result = entry.validate("15.0");
+        let result = entry.validate("15.0", true);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_float_validate_with_input_within_min_max() {
         let entry = FloatEntry { default_value: None, max: Some(10.0), min: Some(1.0) };
-        let result = entry.validate("5.0");
-        assert_eq!(result.unwrap(), QuestionAnswerInput::Float(5.0));
+        let result = entry.validate("5.0", true);
+        assert_eq!(result.unwrap(), QuestionAnswerInput::Float(Some(5.0)));
     }
 
     #[test]
     fn test_bool_validate_with_empty_input_and_default() {
         let entry = BoolEntry { default_value: Some(true) };
-        let result = entry.validate("");
-        assert_eq!(result.unwrap(), QuestionAnswerInput::Bool(true));
+        let result = entry.validate("", true);
+        assert_eq!(result.unwrap(), QuestionAnswerInput::Bool(Some(true)));
     }
 
     #[test]
     fn test_bool_validate_with_empty_input_and_no_default() {
         let entry = BoolEntry { default_value: None };
-        let result = entry.validate("");
+        let result = entry.validate("", true);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "No default value is set. Input is needed.");
     }
@@ -631,8 +652,8 @@ mod tests {
         let entry = BoolEntry { default_value: None };
         let inputs = ["y", "yes", "true"];
         for &input in inputs.iter() {
-            let result = entry.validate(input);
-            assert_eq!(result.unwrap(), QuestionAnswerInput::Bool(true));
+            let result = entry.validate(input, true);
+            assert_eq!(result.unwrap(), QuestionAnswerInput::Bool(Some(true)));
         }
     }
 
@@ -641,15 +662,15 @@ mod tests {
         let entry = BoolEntry { default_value: None };
         let inputs = ["n", "no", "false"];
         for &input in inputs.iter() {
-            let result = entry.validate(input);
-            assert_eq!(result.unwrap(), QuestionAnswerInput::Bool(false));
+            let result = entry.validate(input, true);
+            assert_eq!(result.unwrap(), QuestionAnswerInput::Bool(Some(false)));
         }
     }
 
     #[test]
     fn test_bool_validate_with_invalid_input() {
         let entry = BoolEntry { default_value: None };
-        let result = entry.validate("invalid");
+        let result = entry.validate("invalid", true);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "Input can not be cast into a bool value.");
     }
@@ -662,8 +683,8 @@ mod tests {
             options,
         };
 
-        let result = option_entry.validate("0");
-        assert_eq!(result.unwrap(), QuestionAnswerInput::Option("Option1".to_string()));
+        let result = option_entry.validate("0", true);
+        assert_eq!(result.unwrap(), QuestionAnswerInput::Option(Some("Option1".to_string())));
     }
 
 
@@ -675,8 +696,8 @@ mod tests {
             options,
         };
 
-        let result = option_entry.validate("1");
-        assert_eq!(result.unwrap(), QuestionAnswerInput::Option("Option2".to_string()));
+        let result = option_entry.validate("1", true);
+        assert_eq!(result.unwrap(), QuestionAnswerInput::Option(Some("Option2".to_string())));
     }
 
     #[test]
@@ -687,7 +708,7 @@ mod tests {
             options,
         };
 
-        let result = option_entry.validate("2");
+        let result = option_entry.validate("2", true);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "Default value index is bigger than the options list");
     }
@@ -700,7 +721,7 @@ mod tests {
             options,
         };
 
-        let result = option_entry.validate("");
+        let result = option_entry.validate("", true);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err().to_string(), "No default value is set. Input is needed.");
     }}

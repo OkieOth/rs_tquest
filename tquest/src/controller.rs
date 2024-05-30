@@ -172,7 +172,7 @@ mod tests {
             AnswerEntry::Block(_) => panic!("unexpected block answer"),
             AnswerEntry::Question(qa) => {
                 if let QuestionAnswerInput::String(qai) = qa {
-                    assert_eq!(expected_input, qai);
+                    assert_eq!(Some(expected_input.to_string()), qai.clone());
                 } else {
                     panic!("expected StringInput, but got something different")
                 }
@@ -205,7 +205,7 @@ mod tests {
                 } 
                 println!("normal question: {}", question_entry.query_text);
                 self.current_step += 1; 
-                Ok(QuestionScreenResult::Proceeded(QuestionAnswerInput::String(format!("step: {}", self.current_step))))
+                Ok(QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some(format!("step: {}", self.current_step)))))
             }
         }
     
@@ -296,7 +296,7 @@ mod tests {
                 } 
                 println!("normal question: {}", question_entry.query_text);
                 self.current_step += 1; 
-                Ok(QuestionScreenResult::Proceeded(QuestionAnswerInput::String(format!("step: {}", self.current_step))))
+                Ok(QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some(format!("step: {}", self.current_step)))))
             }
         }
     
@@ -350,11 +350,11 @@ mod tests {
             }
             fn show_question_screen(&mut self, _question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
                 let ret = match self.current_step {
-                    1 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("Homer".to_string())),
-                    2 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("1956-03-12".to_string())),
-                    5 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("Springfield Nuclear Power Plant".to_string())),
-                    6 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("Nuclear safety inspector".to_string())),
-                    7 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("1986".to_string())),
+                    1 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("Homer".to_string()))),
+                    2 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("1956-03-12".to_string()))),
+                    5 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("Springfield Nuclear Power Plant".to_string()))),
+                    6 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("Nuclear safety inspector".to_string()))),
+                    7 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("1986".to_string()))),
                     _ => panic!("unexpected question screen: step={}", self.current_step)
                 };
                 self.current_step += 1;
@@ -415,11 +415,11 @@ mod tests {
             }
             fn show_question_screen(&mut self, _question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
                 let ret = match self.current_step {
-                    1 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("Homer".to_string())),
-                    2 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("1956-03-12".to_string())),
-                    5 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("Springfield Nuclear Power Plant".to_string())),
-                    6 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("Nuclear safety inspector".to_string())),
-                    7 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String("1986".to_string())),
+                    1 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("Homer".to_string()))),
+                    2 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("1956-03-12".to_string()))),
+                    5 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("Springfield Nuclear Power Plant".to_string()))),
+                    6 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("Nuclear safety inspector".to_string()))),
+                    7 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("1986".to_string()))),
                     _ => panic!("unexpected question screen: step={}", self.current_step)
                 };
                 self.current_step += 1;
