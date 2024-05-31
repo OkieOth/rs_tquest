@@ -10,7 +10,7 @@ use regex::{self, Regex};
 #[derive(Debug, BuilderFromDefault, Clone, Default)]
 pub struct StringEntry {
     pub default_value: Option<String>,
-    pub reqexp: Option<String>,
+    pub regexp: Option<String>,
     pub max_length: Option<usize>,
     pub min_length: Option<usize>,
 }
@@ -39,7 +39,7 @@ impl StringEntry {
                 return Err(anyhow!("Max input len not respected"));
             }
         }
-        if let Some(regex) = self.reqexp.as_ref() {
+        if let Some(regex) = self.regexp.as_ref() {
             let re = Regex::from_str(regex).unwrap();
             if ! re.is_match(input) {
                 return Err(anyhow!("Max input len not respected"));
@@ -436,7 +436,7 @@ mod tests {
             default_value: None,
             min_length: Some(5),
             max_length: None,
-            reqexp: None,
+            regexp: None,
         };
         assert!(entry.validate("12345", true).is_ok());
         assert!(entry.validate("1234", true).is_err());
@@ -448,7 +448,7 @@ mod tests {
             default_value: None,
             min_length: None,
             max_length: Some(5),
-            reqexp: None,
+            regexp: None,
         };
         assert!(entry.validate("12345", true).is_ok());
         assert!(entry.validate("123456", true).is_err());
@@ -460,7 +460,7 @@ mod tests {
             default_value: None,
             min_length: None,
             max_length: None,
-            reqexp: Some(r"^\d+$".to_string()),
+            regexp: Some(r"^\d+$".to_string()),
         };
         assert!(entry.validate("12345", true).is_ok());
         assert!(entry.validate("1234a", true).is_err());
@@ -472,7 +472,7 @@ mod tests {
             default_value: None,
             min_length: Some(3),
             max_length: Some(5),
-            reqexp: Some(r"^\d+$".to_string()),
+            regexp: Some(r"^\d+$".to_string()),
         };
         assert!(entry.validate("123", true).is_ok());
         assert!(entry.validate("1234", true).is_ok());
@@ -488,7 +488,7 @@ mod tests {
             default_value: None,
             min_length: None,
             max_length: None,
-            reqexp: None,
+            regexp: None,
         };
         assert!(entry.validate("any string", true).is_ok());
     }
@@ -499,7 +499,7 @@ mod tests {
             default_value: None,
             min_length: Some(3),
             max_length: Some(5),
-            reqexp: Some(r"^\d+$".to_string()),
+            regexp: Some(r"^\d+$".to_string()),
         };
 
         // Valid input that meets all constraints

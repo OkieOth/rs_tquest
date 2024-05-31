@@ -23,7 +23,7 @@ fn get_brother_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
             .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
             .entry_type(EntryType::String(
                 StringEntry::builder()
-                .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                .regexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
                 .build()
             ))
             .build()
@@ -52,7 +52,7 @@ fn get_sister_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
             .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
             .entry_type(EntryType::String(
                 StringEntry::builder()
-                .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                .regexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
                 .build()
             ))
             .build()
@@ -195,7 +195,7 @@ fn build_questionaire() -> Questionaire {
                     .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
                     .entry_type(EntryType::String(
                         StringEntry::builder()
-                        .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                        .regexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
                         .build()
                     ))
                     .build()

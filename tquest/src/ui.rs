@@ -197,7 +197,7 @@ impl ViewHelper for StringEntry {
         if let Some(max) = self.max_length {
             s.push_str(&format!(", max-length: {}", max));
         }
-        if let Some(regexp) = self.reqexp.as_ref() {
+        if let Some(regexp) = self.regexp.as_ref() {
             s.push_str(&format!(", regexp: {}", regexp));
         }
         s
