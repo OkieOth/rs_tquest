@@ -9,7 +9,7 @@ mod persistence;
 use controller::{QController, QuestionaireResult};
 use anyhow::Result;
 
-pub use questionaire::{Questionaire, QuestionaireBuilder, QuestionaireEntry, QuestionEntry, 
+pub use questionaire::{Questionaire, QuestionaireBuilder, QuestionaireEntry, QuestionEntry, RepeatedQuestionEntry, 
     SubBlock, EntryType, StringEntry, IntEntry, FloatEntry, BoolEntry, 
     OptionEntry};
 
