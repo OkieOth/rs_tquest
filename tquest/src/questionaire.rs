@@ -218,6 +218,7 @@ impl Default for EntryType {
 pub enum QuestionaireEntry {
     Block(SubBlock),
     Question(QuestionEntry),
+    RepeatedQuestion(RepeatedQuestionEntry),
 }
 
 
@@ -239,6 +240,18 @@ pub struct QuestionEntry {
     pub pos: usize,
     pub required: bool,
     pub query_text: String,
+    pub help_text: Option<String>,
+    pub entry_type: EntryType,
+}
+
+#[derive(BuilderFromDefault, Debug, Clone, Default)]
+pub struct RepeatedQuestionEntry {
+    pub id: String,
+    pub pos: usize,
+    pub min_count: usize,
+    pub max_count: usize,
+    pub query_text: String,
+    pub secondary_query_text: Option<String>,
     pub help_text: Option<String>,
     pub entry_type: EntryType,
 }
@@ -308,6 +321,10 @@ impl <'a> QuestionaireBuilder<'a> {
                     QuestionaireEntry::Block(b) => {
                         counter = init_positions_block(b, counter);
                     }
+                    QuestionaireEntry::RepeatedQuestion(e) => {
+                        e.pos = counter;
+                        counter += 1;
+                    },
                 }
             }
             counter
@@ -318,6 +335,10 @@ impl <'a> QuestionaireBuilder<'a> {
             for q in questions.iter_mut() {
                 match q {
                     QuestionaireEntry::Question(e) => {
+                        e.pos = counter;
+                        counter += 1;
+                    },
+                    QuestionaireEntry::RepeatedQuestion(e) => {
                         e.pos = counter;
                         counter += 1;
                     },
@@ -364,6 +385,7 @@ impl <'a> QuestionaireBuilder<'a> {
 pub enum AnswerEntry {
     Block(BlockAnswer),
     Question(QuestionAnswerInput),
+    RepeatedQuestion(Vec<QuestionAnswerInput>),
 }
 
 
@@ -406,6 +428,7 @@ mod tests {
                     assert_eq!(counter, b.pos.unwrap());
                     counter += 1;
                 },
+                _ => panic!("Unexpected input"),
             };
         }
     }

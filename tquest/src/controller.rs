@@ -1,7 +1,7 @@
 use crate::{
-    questionaire::{AnswerEntry, BlockAnswer, Questionaire, SubBlock},
-    ui::{ProceedScreenResult, QuestionScreenResult, QuestionaireView},
-    QuestionaireEntry,
+    questionaire::{AnswerEntry, BlockAnswer, Questionaire, RepeatedQuestionEntry, SubBlock, QuestionAnswerInput}, 
+        ui::{MsgLevel, ProceedScreenResult, QuestionScreenResult, QuestionaireView}, 
+    QuestionEntry, QuestionaireEntry
 };
 use anyhow::Result;
 
@@ -41,7 +41,7 @@ impl<V: QuestionaireView> QController<V> {
                     AnswerEntry::Block(ba) => {
                         return Ok(QuestionaireResult::Finished(ba));
                     },
-                    AnswerEntry::Question(_) => panic!("receive wrong result for init-block"),
+                    _ => panic!("receive wrong result for init-block"),
                 }
             },
         }
@@ -54,7 +54,6 @@ fn enter_sub_block<V: QuestionaireView> (
     init: bool,
     question_count: usize
 ) -> Result<ControllerResult> {
-    //let block_answers: Vec<AnswerEntry> = Vec::new();
     let mut block_answer: BlockAnswer = BlockAnswer {
         id: sub_block.id.clone(),
         iterations: Vec::new(),
@@ -79,8 +78,16 @@ fn enter_sub_block<V: QuestionaireView> (
                             iteration_answers.push(answer);
                         }
                     }
+                },
+                QuestionaireEntry::RepeatedQuestion(rq) => {
+                    match run_repeated_question(view, rq, question_count)? {
+                        ControllerResult::Canceled => return Ok(ControllerResult::Canceled),
+                        ControllerResult::Finished(answer) => {
+                            iteration_answers.push(answer);
+                        }
+                    }
                 }
-            }
+             }
         }
         block_answer.iterations.push(iteration_answers);
         if let Some(end_text) = sub_block.end_text.as_deref() {
@@ -161,6 +168,78 @@ fn run_sub_block<V: QuestionaireView> (
     }
 }
 
+
+fn run_repeated_question<V: QuestionaireView> (
+    view: &mut V,
+    repeated_question: &RepeatedQuestionEntry, question_count: usize) -> Result<ControllerResult> {
+
+        fn check_for_min_input<V: QuestionaireView, T> (repeated_question: &RepeatedQuestionEntry, loop_count: usize, view: &mut V, a: &Option<T>) -> bool {
+            if (repeated_question.min_count > 0) && (loop_count <= repeated_question.min_count) && (a.is_none()) {
+                let m = format!("Input is needed. Minimal number of elements ({}) isn't reached yet.", repeated_question.min_count);
+                view.show_msg(&m, MsgLevel::Critical);
+                false
+            } else {
+                true
+            }
+        }
+    
+
+    let current = repeated_question.pos;
+
+    let mut loop_count: usize = 0;
+    let mut answers: Vec<QuestionAnswerInput> = Vec::new();
+    loop {
+        loop_count += 1;
+        if loop_count > repeated_question.max_count {
+            view.show_msg("Reached maximum number of input entries. Go on with the next topic ...", MsgLevel::Normal);
+            break;
+        }
+
+        let question_txt = if loop_count == 1 {
+            repeated_question.query_text.clone()
+        } else {
+            if let Some(t) = repeated_question.secondary_query_text.as_ref() {
+                t.clone()
+            } else {
+                repeated_question.query_text.clone()
+            }
+        };
+        let q = QuestionEntry::builder()
+            .id(&repeated_question.id)
+            .pos(repeated_question.pos)
+            .query_text(&question_txt)
+            .entry_type(repeated_question.entry_type.clone())
+            .build();
+        match view.show_question_screen(&q, question_count)? {
+            QuestionScreenResult::Canceled => return Ok(ControllerResult::Canceled),
+            QuestionScreenResult::Proceeded(answer) => {
+            if match &answer {
+                    QuestionAnswerInput::String(a) => {
+                        check_for_min_input::<V, String>(&repeated_question, loop_count, view, &a)
+                    },
+                    QuestionAnswerInput::Int(a) => {
+                        check_for_min_input::<V, i32>(&repeated_question, loop_count, view, &a)
+                    },
+                    QuestionAnswerInput::Float(a) => {
+                        check_for_min_input::<V, f32>(&repeated_question, loop_count, view, &a)
+                    },
+                    QuestionAnswerInput::Bool(a) => {
+                        check_for_min_input::<V, bool>(&repeated_question, loop_count, view, &a)
+                    },
+                    QuestionAnswerInput::Option(a) => {
+                        check_for_min_input::<V, String>(&repeated_question, loop_count, view, &a)
+                    },
+                } {
+                    answers.push(answer);
+                }
+            }
+        }
+    }
+    Ok(ControllerResult::Finished(
+        AnswerEntry::RepeatedQuestion(answers)
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use crate::questionaire::{QuestionEntry, EntryType, StringEntry, QuestionAnswerInput};
@@ -177,6 +256,9 @@ mod tests {
                     panic!("expected StringInput, but got something different")
                 }
             },
+            _ => {
+                panic!("expected Input, but got something different")
+            }
         }
     }
 
@@ -188,9 +270,6 @@ mod tests {
         }
     
         impl QuestionaireView for UiMock {
-            fn print_title<'a>(&mut self, _title: &str) {
-            }
-
             fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
                 if (self.current_step != 0) && (self.current_step != 3) {
                     panic!("unexpected proceed screen: {}: {}", self.current_step, text);
@@ -276,7 +355,6 @@ mod tests {
         }
 
         impl QuestionaireView for UiMock2 {
-            fn print_title<'a>(&mut self, _title: &str) {}
             fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
                 if (self.current_step != 0) && (self.current_step != 3) {
                     panic!("unexpected proceed screen: {}: {}", self.current_step, text);
@@ -332,9 +410,6 @@ mod tests {
         }
     
         impl QuestionaireView for UiMock {
-            fn print_title<'a>(&mut self, _title: &str) {
-            }
-
             fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, _text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
                 let ret = match self.current_step {
                     0 => ProceedScreenResult::Proceeded(true),  // Start
@@ -397,9 +472,6 @@ mod tests {
         }
     
         impl QuestionaireView for UiMock {
-            fn print_title<'a>(&mut self, _title: &str) {
-            }
-
             fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, _text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
                 let ret = match self.current_step {
                     0 => ProceedScreenResult::Proceeded(true),  // Start

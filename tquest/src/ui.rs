@@ -20,11 +20,18 @@ pub enum ProceedScreenResult {
     Proceeded(bool)
 }
 
+pub enum MsgLevel {
+    Normal,
+    Urgent,
+    Critical,
+}
+
 
 pub trait QuestionaireView {
-    fn print_title<'a>(&mut self, title: &str);
+    fn print_title<'a>(&mut self, _title: &str) {}
     fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T, question_count: usize, current: usize) -> Result<ProceedScreenResult>;
     fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize) -> Result<QuestionScreenResult>;
+    fn show_msg(&mut self, _msg: &str, _level: MsgLevel) {}
 }
 
 trait ViewHelper {
@@ -48,6 +55,17 @@ impl QuestionaireView for Ui {
     fn print_title<'a>(&mut self, title: &str) {
         println!("\n________________________________________________________________________________");
         println!("\n{}\n", title.bold().underline());
+    }
+
+    fn show_msg<'a>(&mut self, msg: &str, level: MsgLevel) {
+        match level {
+            MsgLevel::Normal => {
+                println!("\n{}\n", msg.italic());
+            },
+            _ => {
+                println!("\n{}\n", msg.yellow().italic());
+            }
+        }
     }
 
     fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, help_text: T, question_count: usize, current: usize) -> Result<ProceedScreenResult> {
