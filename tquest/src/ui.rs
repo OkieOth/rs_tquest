@@ -156,8 +156,34 @@ impl QuestionaireView for Ui {
             s
         }
 
-        fn print_result_and_return(input_str: &str, ret: QuestionAnswerInput) -> Result<QuestionScreenResult> {
-            println!(">>> {}", format!("{}", input_str).green());
+        fn print_result_and_return(ret: QuestionAnswerInput) -> Result<QuestionScreenResult> {
+            match &ret {
+                QuestionAnswerInput::String(x) => {
+                    if let Some(v) =x {
+                        println!(">>> {}", format!("{}", v).green());
+                    }
+                },
+                QuestionAnswerInput::Int(x) => {
+                    if let Some(v) =x {
+                        println!(">>> {}", format!("{}", v).green());
+                    }
+                },
+                QuestionAnswerInput::Float(x) => {
+                    if let Some(v) =x {
+                        println!(">>> {}", format!("{}", v).green());
+                    }
+                },
+                QuestionAnswerInput::Bool(x) => {
+                    if let Some(v) =x {
+                        println!(">>> {}", format!("{}", v).green());
+                    }
+                },
+                QuestionAnswerInput::Option(x) => {
+                    if let Some(v) =x {
+                        println!(">>> {}", format!("{}", v).green());
+                    }
+                }
+            }
             return Ok(QuestionScreenResult::Proceeded(ret));
         }
 
@@ -194,7 +220,7 @@ impl QuestionaireView for Ui {
                 }
             } {
                 // validate was ok ...
-                return print_result_and_return(str, ret);
+                return print_result_and_return(ret);
             } else {
                 print_wrong_input(question_entry);
             }

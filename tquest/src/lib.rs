@@ -41,6 +41,35 @@ mod test_helper {
             EntryType, OptionEntry},
         QuestionaireEntry,
     };
+
+    use std::{io::Write, path::Path};
+    use std::fs::{File, remove_file};
+
+
+    #[test]
+    fn test_json() {
+        let p = Path::new("tmp");
+        if ! p.is_dir() {
+            let _ = std::fs::create_dir(p);
+        }
+        let pf = Path::new("tmp/test.json");
+        if p.is_file() {
+            let _ = remove_file(pf);
+        }
+
+        assert!(!p.is_file());
+    
+        let q = create_complex_questionaire();
+        let json_string = serde_json::to_string(&q).unwrap();
+
+        let mut file = File::create("tmp/test.json").unwrap();
+        let _ = file.write_all(json_string.as_bytes());
+
+        assert!(pf.is_file());
+
+        let q2: Questionaire = serde_json::from_str(&json_string).unwrap();
+        assert_eq!(q, q2);
+    }
     
     pub fn create_small_questionaire() -> Questionaire {
         Questionaire::builder()
@@ -76,7 +105,7 @@ mod test_helper {
             .build()
     }
 
-    pub fn build_complex_questionaire() -> Questionaire {
+    pub fn create_complex_questionaire() -> Questionaire {
         fn get_brother_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
             vec![
                 QuestionaireEntry::Question (

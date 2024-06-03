@@ -5,9 +5,10 @@ use std::{default, str::FromStr};
 use builder_m4cro::{Builder, BuilderFromDefault};
 use anyhow::{Result, anyhow};
 use regex::{self, Regex};
+use serde::{Deserialize, Serialize};
 
 /// Expected string entry
-#[derive(Debug, BuilderFromDefault, Clone, Default)]
+#[derive(Debug, BuilderFromDefault, Clone, Default, Deserialize, Serialize, PartialEq)]
 pub struct StringEntry {
     pub default_value: Option<String>,
     pub regexp: Option<String>,
@@ -51,7 +52,7 @@ impl StringEntry {
 
 
 /// Expected int entry
-#[derive(Debug, BuilderFromDefault, Default, Clone)]
+#[derive(Debug, BuilderFromDefault, Default, Clone, Deserialize, Serialize, PartialEq)]
 pub struct IntEntry {
     pub default_value: Option<i32>,
     pub max: Option<i32>,
@@ -91,7 +92,7 @@ impl IntEntry {
 }
 
 /// Expected floating point entry
-#[derive(Debug, BuilderFromDefault, Clone, Default)]
+#[derive(Debug, BuilderFromDefault, Clone, Default, Deserialize, Serialize, PartialEq)]
 pub struct FloatEntry {
     pub default_value: Option<f32>,
     pub max: Option<f32>,
@@ -131,7 +132,7 @@ impl FloatEntry {
 }
 
 /// Expected bool entry
-#[derive(Debug, BuilderFromDefault, Clone, Default)]
+#[derive(Debug, BuilderFromDefault, Clone, Default, Deserialize, Serialize, PartialEq)]
 pub struct BoolEntry {
     pub default_value: Option<bool>,
 }
@@ -158,7 +159,7 @@ impl BoolEntry {
 }
 
 /// Expected String entry based on a number of predefined options
-#[derive(Debug, BuilderFromDefault, Clone, Default)]
+#[derive(Debug, BuilderFromDefault, Clone, Default, Deserialize, Serialize, PartialEq)]
 pub struct OptionEntry {
     /// represents the index of the array, used as default value
     pub default_value: Option<u32>,
@@ -197,7 +198,7 @@ impl OptionEntry {
 }
 
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum EntryType {
     String(StringEntry),
     Int(IntEntry),
@@ -214,7 +215,7 @@ impl Default for EntryType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub enum QuestionaireEntry {
     Block(SubBlock),
     Question(QuestionEntry),
@@ -223,7 +224,7 @@ pub enum QuestionaireEntry {
 
 
 
-#[derive(Debug, Clone, Default, BuilderFromDefault)]
+#[derive(Debug, Clone, Default, BuilderFromDefault, Deserialize, Serialize, PartialEq)]
 pub struct SubBlock {
     pub id: String,
     pub pos: Option<usize>,
@@ -234,7 +235,7 @@ pub struct SubBlock {
     pub loop_over_entries: bool,
 }
 
-#[derive(BuilderFromDefault, Debug, Clone, Default)]
+#[derive(BuilderFromDefault, Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
 pub struct QuestionEntry {
     pub id: String,
     pub pos: usize,
@@ -244,7 +245,7 @@ pub struct QuestionEntry {
     pub entry_type: EntryType,
 }
 
-#[derive(BuilderFromDefault, Debug, Clone, Default)]
+#[derive(BuilderFromDefault, Debug, Clone, Default, Deserialize, Serialize, PartialEq)]
 pub struct RepeatedQuestionEntry {
     pub id: String,
     pub pos: usize,
@@ -256,7 +257,7 @@ pub struct RepeatedQuestionEntry {
     pub entry_type: EntryType,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub struct Questionaire {
     /// Hashmap of level to list of questions per level
     pub title: String,
@@ -381,7 +382,7 @@ impl <'a> QuestionaireBuilder<'a> {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum AnswerEntry {
     Block(BlockAnswer),
     Question(QuestionAnswerInput),
@@ -389,16 +390,16 @@ pub enum AnswerEntry {
 }
 
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Deserialize, Serialize)]
 pub enum QuestionAnswerInput {
     String(Option<String>),
     Int(Option<i32>),
     Float(Option<f32>),
     Bool(Option<bool>),
-    Option(Option<String>),
+    Option(Option<String>)
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Deserialize, Serialize)]
 pub struct BlockAnswer {
     pub id: String,
 
@@ -435,7 +436,7 @@ mod tests {
 
     #[test]
     fn test_pos_init_02() {
-        let questionaire = test_helper::build_complex_questionaire();
+        let questionaire = test_helper::create_complex_questionaire();
         assert_eq!(16, questionaire.pos_count.unwrap());
         assert_eq!(None, questionaire.init_block.pos);
         // let mut counter: usize = 1;

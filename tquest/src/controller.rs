@@ -4,9 +4,10 @@ use crate::{
     QuestionEntry, QuestionaireEntry
 };
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum QuestionaireResult {
     Canceled,
     Finished(BlockAnswer),
@@ -172,7 +173,6 @@ fn run_sub_block<V: QuestionaireView> (
 fn run_repeated_question<V: QuestionaireView> (
     view: &mut V,
     repeated_question: &RepeatedQuestionEntry, question_count: usize) -> Result<ControllerResult> {
-
         fn check_for_min_input<V: QuestionaireView, T> (repeated_question: &RepeatedQuestionEntry, loop_count: usize, view: &mut V, a: &Option<T>) -> bool {
             if (repeated_question.min_count > 0) && (loop_count <= repeated_question.min_count) && (a.is_none()) {
                 let m = format!("Input is needed. Minimal number of elements ({}) isn't reached yet.", repeated_question.min_count);
@@ -190,7 +190,7 @@ fn run_repeated_question<V: QuestionaireView> (
     let mut answers: Vec<QuestionAnswerInput> = Vec::new();
     loop {
         loop_count += 1;
-        if loop_count > repeated_question.max_count {
+        if (repeated_question.max_count>0) && (loop_count > repeated_question.max_count) {
             view.show_msg("Reached maximum number of input entries. Go on with the next topic ...", MsgLevel::Normal);
             break;
         }
@@ -213,25 +213,48 @@ fn run_repeated_question<V: QuestionaireView> (
         match view.show_question_screen(&q, question_count)? {
             QuestionScreenResult::Canceled => return Ok(ControllerResult::Canceled),
             QuestionScreenResult::Proceeded(answer) => {
-            if match &answer {
+                match &answer {
                     QuestionAnswerInput::String(a) => {
-                        check_for_min_input::<V, String>(&repeated_question, loop_count, view, &a)
+                        if check_for_min_input::<V, String>(&repeated_question, loop_count, view, &a) {
+                            if a.is_none() {
+                                break;
+                            }
+                            answers.push(answer);
+                        }
                     },
                     QuestionAnswerInput::Int(a) => {
-                        check_for_min_input::<V, i32>(&repeated_question, loop_count, view, &a)
+                        if check_for_min_input::<V, i32>(&repeated_question, loop_count, view, &a) {
+                            if a.is_none() {
+                                break;
+                            }
+                            answers.push(answer);
+                        }
                     },
                     QuestionAnswerInput::Float(a) => {
-                        check_for_min_input::<V, f32>(&repeated_question, loop_count, view, &a)
+                        if check_for_min_input::<V, f32>(&repeated_question, loop_count, view, &a) {
+                            if a.is_none() {
+                                break;
+                            }
+                            answers.push(answer);
+                        }
                     },
                     QuestionAnswerInput::Bool(a) => {
-                        check_for_min_input::<V, bool>(&repeated_question, loop_count, view, &a)
+                        if check_for_min_input::<V, bool>(&repeated_question, loop_count, view, &a) {
+                            if a.is_none() {
+                                break;
+                            }
+                            answers.push(answer);
+                        }                        
                     },
                     QuestionAnswerInput::Option(a) => {
-                        check_for_min_input::<V, String>(&repeated_question, loop_count, view, &a)
-                    },
-                } {
-                    answers.push(answer);
-                }
+                        if check_for_min_input::<V, String>(&repeated_question, loop_count, view, &a) {
+                            if a.is_none() {
+                                break;
+                            }
+                            answers.push(answer);
+                        }                        
+                    }
+                };
             }
         }
     }
@@ -439,7 +462,7 @@ mod tests {
     
      
         let ui = UiMock::default();
-        let questionaire = test_helper::build_complex_questionaire();
+        let questionaire = test_helper::create_complex_questionaire();
     
         let mut c: QController<UiMock> = QController::new(questionaire, ui);
         match c.run() {
@@ -501,7 +524,7 @@ mod tests {
     
      
         let ui = UiMock::default();
-        let questionaire = test_helper::build_complex_questionaire();
+        let questionaire = test_helper::create_complex_questionaire();
     
         let mut c: QController<UiMock> = QController::new(questionaire, ui);
         match c.run() {
