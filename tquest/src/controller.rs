@@ -1,7 +1,5 @@
 use crate::{
-    questionaire::{AnswerEntry, BlockAnswer, Questionaire, RepeatedQuestionEntry, SubBlock, QuestionAnswerInput}, 
-        ui::{MsgLevel, ProceedScreenResult, QuestionScreenResult, QuestionaireView}, 
-    QuestionEntry, QuestionaireEntry
+    persistence::{self, QuestionairePersistence}, questionaire::{AnswerEntry, BlockAnswer, QuestionAnswerInput, Questionaire, RepeatedQuestionEntry, SubBlock}, ui::{MsgLevel, ProceedScreenResult, QuestionScreenResult, QuestionaireView}, QuestionEntry, QuestionaireEntry
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -19,14 +17,15 @@ pub enum ControllerResult {
 }
 
 
-pub struct QController<V: QuestionaireView> {
+pub struct QuestionaireController<V: QuestionaireView, P: QuestionairePersistence> {
     questionaire: Questionaire,
     view: V,
+    persistence: P,
 }
 
-impl<V: QuestionaireView> QController<V> {
-    pub fn new(questionaire: Questionaire, view: V) -> Self {
-        Self { questionaire, view }
+impl<V: QuestionaireView, P: QuestionairePersistence> QuestionaireController<V, P> {
+    pub fn new(questionaire: Questionaire, view: V, persistence: P) -> Self {
+        Self { questionaire, view, persistence }
     }
 
     pub fn run(&mut self) -> Result<QuestionaireResult> {   
@@ -35,7 +34,7 @@ impl<V: QuestionaireView> QController<V> {
         } else {
             0
         };
-        match run_sub_block(&mut self.view, &self.questionaire.init_block, true, pos_count)? {
+        match run_sub_block(&mut self.view, &mut self.persistence, &self.questionaire.init_block, true, pos_count)? {
             ControllerResult::Canceled => return Ok(QuestionaireResult::Canceled),
             ControllerResult::Finished(answers) => {
                 match answers {
@@ -49,8 +48,9 @@ impl<V: QuestionaireView> QController<V> {
     }
 }
 
-fn enter_sub_block<V: QuestionaireView> (
+fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
     view: &mut V,
+    persistence: &mut P,
     sub_block: &SubBlock,
     init: bool,
     question_count: usize
@@ -68,12 +68,13 @@ fn enter_sub_block<V: QuestionaireView> (
                     match view.show_question_screen(&q, question_count)? {
                         QuestionScreenResult::Canceled => return Ok(ControllerResult::Canceled),
                         QuestionScreenResult::Proceeded(answer) => {
+                            persistence.store_question(&q , &answer);
                             iteration_answers.push(AnswerEntry::Question(answer));
                         }
                     }
                 }
                 QuestionaireEntry::Block(b) => {
-                    match run_sub_block(view, b, false, question_count)? {
+                    match run_sub_block(view, persistence, b, false, question_count)? {
                         ControllerResult::Canceled => return Ok(ControllerResult::Canceled),
                         ControllerResult::Finished(answer) => {
                             iteration_answers.push(answer);
@@ -81,7 +82,7 @@ fn enter_sub_block<V: QuestionaireView> (
                     }
                 },
                 QuestionaireEntry::RepeatedQuestion(rq) => {
-                    match run_repeated_question(view, rq, question_count)? {
+                    match run_repeated_question(view, persistence,  rq, question_count)? {
                         ControllerResult::Canceled => return Ok(ControllerResult::Canceled),
                         ControllerResult::Finished(answer) => {
                             iteration_answers.push(answer);
@@ -127,14 +128,16 @@ fn enter_sub_block<V: QuestionaireView> (
             break;
         }
     }
+    persistence.store_block(&sub_block , &block_answer);
     Ok(ControllerResult::Finished(
         AnswerEntry::Block(block_answer)
     ))
 }
 
 
-fn run_sub_block<V: QuestionaireView> (
+fn run_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
     view: &mut V,
+    persistence: &mut P,
     sub_block: &SubBlock, init: bool, question_count: usize) -> Result<ControllerResult> {
     //self.view.show_proceed_screen("dummy id", "dummy query", "dummy help");
     let current = if let Some(p) = sub_block.pos {
@@ -155,7 +158,7 @@ fn run_sub_block<V: QuestionaireView> (
         },
         ProceedScreenResult::Proceeded(b) => {
             if b {
-                return enter_sub_block(view, sub_block, init, question_count);
+                return enter_sub_block(view, persistence, sub_block, init, question_count);
             } else {
                 if init {
                     return Ok(ControllerResult::Canceled);
@@ -170,8 +173,9 @@ fn run_sub_block<V: QuestionaireView> (
 }
 
 
-fn run_repeated_question<V: QuestionaireView> (
+fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
     view: &mut V,
+    persistence: &mut P,
     repeated_question: &RepeatedQuestionEntry, question_count: usize) -> Result<ControllerResult> {
         fn check_for_min_input<V: QuestionaireView, T> (repeated_question: &RepeatedQuestionEntry, loop_count: usize, view: &mut V, a: &Option<T>) -> bool {
             if (repeated_question.min_count > 0) && (loop_count <= repeated_question.min_count) && (a.is_none()) {
@@ -258,6 +262,7 @@ fn run_repeated_question<V: QuestionaireView> (
             }
         }
     }
+    persistence.store_repeated_question(&repeated_question , &answers);
     Ok(ControllerResult::Finished(
         AnswerEntry::RepeatedQuestion(answers)
     ))
@@ -265,6 +270,8 @@ fn run_repeated_question<V: QuestionaireView> (
 
 #[cfg(test)]
 mod tests {
+    use persistence::NoPersistence;
+
     use crate::questionaire::{QuestionEntry, EntryType, StringEntry, QuestionAnswerInput};
     use crate::test_helper;
     use super::*;
@@ -345,7 +352,8 @@ mod tests {
                 ])
             .build();
     
-        let mut c: QController<UiMock> = QController::new(questionaire, ui);
+        let np = NoPersistence::new();
+        let mut c: QuestionaireController<UiMock, NoPersistence> = QuestionaireController::new(questionaire, ui, np);
         match c.run() {
             Ok(r) => {
                 match r {
@@ -404,7 +412,8 @@ mod tests {
 
         let ui = UiMock2::default();
         let questionaire = test_helper::create_small_questionaire();
-        let mut c: QController<UiMock2> = QController::new(questionaire, ui);
+        let np = NoPersistence::new();
+        let mut c: QuestionaireController<UiMock2, NoPersistence> = QuestionaireController::new(questionaire, ui, np);
         let canceled: bool;
         match c.run() {
             Ok(r) => {
@@ -464,7 +473,8 @@ mod tests {
         let ui = UiMock::default();
         let questionaire = test_helper::create_complex_questionaire();
     
-        let mut c: QController<UiMock> = QController::new(questionaire, ui);
+        let np = NoPersistence::new();
+        let mut c: QuestionaireController<UiMock, NoPersistence> = QuestionaireController::new(questionaire, ui, np);
         match c.run() {
             Ok(r) => {
                 match r {
@@ -525,8 +535,8 @@ mod tests {
      
         let ui = UiMock::default();
         let questionaire = test_helper::create_complex_questionaire();
-    
-        let mut c: QController<UiMock> = QController::new(questionaire, ui);
+        let np = NoPersistence::new();
+        let mut c: QuestionaireController<UiMock, NoPersistence> = QuestionaireController::new(questionaire, ui, np);
         match c.run() {
             Ok(r) => {
                 match r {

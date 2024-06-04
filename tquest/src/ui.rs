@@ -101,7 +101,7 @@ impl QuestionaireView for Ui {
         } else {
             text.to_string()
         };
-        println!("\n{} ({})", text_to_display.bold(), get_valid_input_hint(ht.is_some()).dimmed());
+        println!("\n{}\n({})", text_to_display.bold(), get_valid_input_hint(ht.is_some()).dimmed());
 
         loop {
             let mut input = String::new(); 
@@ -192,37 +192,50 @@ impl QuestionaireView for Ui {
             println!("{}",msg.yellow());
         }
 
+        fn print_help_text(question_entry: &QuestionEntry) {
+            let msg = if let Some(help_text) = &question_entry.help_text {
+                format!("Help: {}", help_text)
+            } else {
+                "no help available".to_string()
+            };
+            println!("\n{}\n",msg.italic());
+        }
+
         let text_to_display = format!("[{}/{}] {}", question_entry.pos, question_count, question_entry.query_text);
-        println!("\n{} ({})", text_to_display.bold(), get_valid_input_hint(&question_entry).dimmed());
+        println!("\n{}\n({})", text_to_display.bold(), get_valid_input_hint(&question_entry).dimmed());
 
         loop {
             let mut input = String::new(); 
             io::stdin().read_line(&mut input).expect("error while reading from stdin");
             let str = input.trim();
-            if let Ok(ret) = match &question_entry.entry_type {
-                EntryType::String (s) => {
-                    s.validate(&str, question_entry.required)
-                },
-                EntryType::Int(s) => {
-                    s.validate(&str, question_entry.required)
-                },
-                EntryType::Float(s) => {
-                    s.validate(&str, question_entry.required)
-                },
-                EntryType::Bool(s) => {
-                    s.validate(&str, question_entry.required)
-                },
-                EntryType::Option(s) => {
-                    s.validate(&str, question_entry.required)
-                },
-                _ => {
-                    panic!("unexpected EntryType for question screen");
-                }
-            } {
-                // validate was ok ...
-                return print_result_and_return(ret);
+            if ((str == "h") || (str == "?")) && (question_entry.help_text.is_some()){
+                print_help_text(&question_entry);
             } else {
-                print_wrong_input(question_entry);
+                if let Ok(ret) = match &question_entry.entry_type {
+                    EntryType::String (s) => {
+                        s.validate(&str, question_entry.required)
+                    },
+                    EntryType::Int(s) => {
+                        s.validate(&str, question_entry.required)
+                    },
+                    EntryType::Float(s) => {
+                        s.validate(&str, question_entry.required)
+                    },
+                    EntryType::Bool(s) => {
+                        s.validate(&str, question_entry.required)
+                    },
+                    EntryType::Option(s) => {
+                        s.validate(&str, question_entry.required)
+                    },
+                    _ => {
+                        panic!("unexpected EntryType for question screen");
+                    }
+                } {
+                    // validate was ok ...
+                    return print_result_and_return(ret);
+                } else {
+                    print_wrong_input(question_entry);
+                }
             }
         }
     }
