@@ -12,7 +12,7 @@ use ui::{ProceedScreenResult, QuestionaireView};
 
 use std::path::Path;
 
-use persistence::FileQuestionairePersistence;
+use persistence::{FileQuestionairePersistence, QuestionairePersistence};
 pub use questionaire::{Questionaire, QuestionaireBuilder, QuestionaireEntry, QuestionEntry, RepeatedQuestionEntry, 
     SubBlock, EntryType, StringEntry, IntEntry, FloatEntry, BoolEntry, 
     OptionEntry};
@@ -28,25 +28,12 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
         p.is_file()
     }
 
-    fn create_persistence(load_old_persistence: bool) -> Result<FileQuestionairePersistence> {
-        let p = Path::new(PERSISTENCE_FILE_NAME);
-    
-        let fp = if load_old_persistence {
-            // persistence file already exists
-            FileQuestionairePersistence::new(PERSISTENCE_FILE_NAME)?
-        } else {
-            FileQuestionairePersistence::new(PERSISTENCE_FILE_NAME)?
-        };
-        Ok(fp)
-    }
-    
-
     let mut ui: Ui = Ui::new()?;
     if title.len() > 0 {
         ui.print_title(title);
     }
-    let mut load_persistence: bool = false;
-    
+    let mut persistence = FileQuestionairePersistence::new(PERSISTENCE_FILE_NAME)?;
+
     if check_for_old_persistence_file() {
         let r = ui.show_proceed_screen("00", "Found persistence file, for a questionaire. Do you want to load it to proceed where you stopped last time?", None, 0, 0);
         match r {
@@ -56,7 +43,9 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
                         return Err(anyhow!("Canceled by user"));
                     },
                     ProceedScreenResult::Proceeded(p) => {
-                        load_persistence = p;
+                        if p {
+                            let _ = persistence.load();
+                        }
                     },
                 }
             },
@@ -66,13 +55,6 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
         };
     }
 
-    let rp = create_persistence(load_persistence);
-    let persistence = match rp {
-        Ok(p) => p,
-        _ => {
-            return Err(anyhow!("Canceled by user"));
-        },
-    };
     let mut c: QuestionaireController<Ui, FileQuestionairePersistence> = QuestionaireController::new(questionaire, ui, persistence);
     c.run()    
 
