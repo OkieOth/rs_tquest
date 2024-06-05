@@ -9,6 +9,7 @@ use std::io::Write;
 use std::path::Path;
 use std::io::{BufRead, BufReader};
 
+
 pub trait QuestionairePersistence {
     fn store_block(&mut self, entry: &SubBlock, data: &BlockAnswer) -> Result<()>;
     fn store_question(&mut self, entry: &QuestionEntry, data: &QuestionAnswerInput) -> Result<()>;
@@ -84,15 +85,15 @@ impl NoPersistence {
 }
 
 impl QuestionairePersistence for NoPersistence {
-    fn store_block(&mut self, entry: &SubBlock, data: &BlockAnswer) -> Result<()> {
+    fn store_block(&mut self, _entry: &SubBlock, _data: &BlockAnswer) -> Result<()> {
         Ok(())
     }
 
-    fn store_question(&mut self, entry: &QuestionEntry, data: &QuestionAnswerInput) -> Result<()> {
+    fn store_question(&mut self, _entry: &QuestionEntry, _data: &QuestionAnswerInput) -> Result<()> {
         Ok(())
     }
 
-    fn store_repeated_question(&mut self, entry: &RepeatedQuestionEntry, data: &Vec<QuestionAnswerInput>) -> Result<()> {
+    fn store_repeated_question(&mut self, _entry: &RepeatedQuestionEntry, _data: &Vec<QuestionAnswerInput>) -> Result<()> {
         Ok(())
     }
 
@@ -101,18 +102,41 @@ impl QuestionairePersistence for NoPersistence {
     }
 }
 
-pub fn load_tmp_file(file_path: &str) -> Result<Vec<(String, String)>> {
+pub fn load_tmp_file(file_path: &str) -> Result<Vec<(String, AnswerEntry)>> {
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
 
-    let mut ret = Vec::new();
+    let mut ret: Vec<(String, AnswerEntry)> = Vec::new();
 
     for line in reader.lines() {
         let line = line.unwrap();
-        if let Some(index) = line.find("=") {
-            let id = line[..index].to_string();
-            let data = line[index+1..].to_string();
-            ret.push((id, data))
+
+        let prefix = &line[..2];
+        let content = &line[3..];
+        let (id, json_str) = if let Some(index) = line.find("=") {
+            (&content[..index], &content[index+1..])
+        } else {
+            continue;
+        };
+        match prefix {
+            "Q:" => {
+                if let Ok(o) = serde_json::from_str::<QuestionAnswerInput>(&json_str) {
+                    ret.push((id.to_string(), AnswerEntry::Question(o)));
+                }
+            },
+            "R:" => {
+                if let Ok(o) = serde_json::from_str::<Vec<QuestionAnswerInput>>(&json_str) {
+                    ret.push((id.to_string(), AnswerEntry::RepeatedQuestion(o)));
+                }
+            },
+            "B:" => {
+                if let Ok(o) = serde_json::from_str::<BlockAnswer>(&json_str) {
+                    ret.push((id.to_string(), AnswerEntry::Block(o)));
+                }
+            },
+            _ => {
+                break;
+            }
         }
     }
     Ok(ret)
