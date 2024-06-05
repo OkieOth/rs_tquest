@@ -382,7 +382,7 @@ impl <'a> QuestionaireBuilder<'a> {
 }
 
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum AnswerEntry {
     Block(BlockAnswer),
     Question(QuestionAnswerInput),
@@ -390,7 +390,7 @@ pub enum AnswerEntry {
 }
 
 
-#[derive(Debug, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, PartialEq, Deserialize, Serialize, Clone)]
 pub enum QuestionAnswerInput {
     String(Option<String>),
     Int(Option<i32>),
@@ -399,7 +399,7 @@ pub enum QuestionAnswerInput {
     Option(Option<String>)
 }
 
-#[derive(Debug, Default, Deserialize, Serialize)]
+#[derive(Debug, Default, Deserialize, Serialize, Clone)]
 pub struct BlockAnswer {
     pub id: String,
 

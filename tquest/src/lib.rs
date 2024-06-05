@@ -10,7 +10,7 @@ use controller::{QuestionaireController, QuestionaireResult};
 use anyhow::{anyhow, Result};
 use ui::{ProceedScreenResult, QuestionaireView};
 
-use std::path::Path;
+use std::{fs, path::Path};
 
 use persistence::{FileQuestionairePersistence, QuestionairePersistence};
 pub use questionaire::{Questionaire, QuestionaireBuilder, QuestionaireEntry, QuestionEntry, RepeatedQuestionEntry, 
@@ -28,13 +28,22 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
         p.is_file()
     }
 
+    fn remove_persistence_file() {
+        let p = Path::new(PERSISTENCE_FILE_NAME);
+        if p.is_file() {
+            let _ = fs::remove_file(p);
+        }
+    }
+
     let mut ui: Ui = Ui::new()?;
     if title.len() > 0 {
         ui.print_title(title);
     }
     let mut persistence = FileQuestionairePersistence::new(PERSISTENCE_FILE_NAME)?;
 
-    if check_for_old_persistence_file() {
+    let persistence_file_exists = check_for_old_persistence_file();
+
+    if persistence_file_exists {
         let r = ui.show_proceed_screen("00", "Found persistence file, for a questionaire. Do you want to load it to proceed where you stopped last time?", None, 0, 0);
         match r {
             Ok(res) => {
@@ -56,7 +65,10 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
     }
 
     let mut c: QuestionaireController<Ui, FileQuestionairePersistence> = QuestionaireController::new(questionaire, ui, persistence);
-    c.run()    
+    if persistence_file_exists {
+        remove_persistence_file();
+    }
+    c.run()
 
 }
 

@@ -1,5 +1,5 @@
 use crate::controller::{ControllerResult, QuestionaireResult};
-use crate::questionaire::{BlockAnswer, QuestionAnswerInput, QuestionEntry, QuestionaireEntry, RepeatedQuestionEntry, SubBlock} ;
+use crate::questionaire::{AnswerEntry, BlockAnswer, QuestionAnswerInput, QuestionEntry, QuestionaireEntry, RepeatedQuestionEntry, SubBlock} ;
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
@@ -18,7 +18,7 @@ pub trait QuestionairePersistence {
 
 pub struct FileQuestionairePersistence  {
     file: String,
-    data: Vec<(String, String)>,
+    data: Vec<(String, AnswerEntry)>,
     pub debug: bool,
 }
 
@@ -32,10 +32,9 @@ impl FileQuestionairePersistence  {
         Ok(ret)
     }
 
-    fn store<T: Serialize>(&mut self, id: &str, answer: &T) -> Result<()> {
+    fn store<T: Serialize>(&mut self, id: &str, answer: &T, type_marker: &str) -> Result<()> {
         let json_string = serde_json::to_string(answer).unwrap();
-        self.data.push((id.to_string(), json_string.clone()));
-        let txt = format!("{}={}", id, json_string);
+        let txt = format!("{}:{}={}",type_marker, id, json_string);
         if self.debug {
             println!("{}", txt.blue().italic());
         }
@@ -56,15 +55,18 @@ impl FileQuestionairePersistence  {
 
 impl QuestionairePersistence for FileQuestionairePersistence {
     fn store_block(&mut self, entry: &SubBlock, data: &BlockAnswer) -> Result<()> {
-        self.store(&entry.id, data)
+        self.data.push((entry.id.to_string(), AnswerEntry::Block(data.clone())));
+        self.store(&entry.id, data, "B")
     }
 
     fn store_question(&mut self, entry: &QuestionEntry, data: &QuestionAnswerInput) -> Result<()> {
-        self.store(&entry.id, data)
+        self.data.push((entry.id.to_string(), AnswerEntry::Question(data.clone())));
+        self.store(&entry.id, data, "Q")
     }
 
     fn store_repeated_question(&mut self, entry: &RepeatedQuestionEntry, data: &Vec<QuestionAnswerInput>) -> Result<()> {
-        self.store(&entry.id, data)
+        self.data.push((entry.id.to_string(), AnswerEntry::RepeatedQuestion(data.clone())));
+        self.store(&entry.id, data, "R")
     }
 
     fn load(&mut self) -> Result<()> {

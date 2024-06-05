@@ -17,3 +17,5 @@ tmp
 # Added by cargo
 
 /target
+
+*.tmp
