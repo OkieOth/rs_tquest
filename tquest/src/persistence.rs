@@ -4,9 +4,10 @@ use anyhow::{anyhow, Result};
 use colored::Colorize;
 use serde::{Deserialize, Serialize};
 
-use std::fs::OpenOptions;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
+use std::io::{BufRead, BufReader};
 
 pub trait QuestionairePersistence {
     fn store_block(&mut self, entry: &SubBlock, data: &BlockAnswer) -> Result<()>;
@@ -95,5 +96,38 @@ impl QuestionairePersistence for NoPersistence {
 
     fn load(&mut self) -> Result<()> {
         Err(anyhow!("Not supported"))
+    }
+}
+
+pub fn load_tmp_file(file_path: &str) -> Result<Vec<(String, String)>> {
+    let file = File::open(file_path)?;
+    let reader = BufReader::new(file);
+
+    let mut ret = Vec::new();
+
+    for line in reader.lines() {
+        let line = line.unwrap();
+        if let Some(index) = line.find("=") {
+            let id = line[..index].to_string();
+            let data = line[index+1..].to_string();
+            ret.push((id, data))
+        }
+    }
+    Ok(ret)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_load_tmp_file() {
+        if let Ok(v) = load_tmp_file("res/tquest.tmp") {
+            assert_eq!(19, v.len());
+            // checking that the ids are unique
+            // checking that the content can be deserialized
+        } else {
+            panic!("error while loading test file");
+        }
     }
 }
