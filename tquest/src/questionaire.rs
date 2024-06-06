@@ -1,8 +1,9 @@
 //! Main types of the questionaire implementation
 //! 
-use std::{default, str::FromStr};
+use std::str::FromStr;
+use std::fmt::{Display, Formatter};
 
-use builder_m4cro::{Builder, BuilderFromDefault};
+use builder_m4cro::BuilderFromDefault;
 use anyhow::{Result, anyhow};
 use regex::{self, Regex};
 use serde::{Deserialize, Serialize};
@@ -399,6 +400,32 @@ pub enum QuestionAnswerInput {
     Option(Option<String>)
 }
 
+impl Display for QuestionAnswerInput {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            QuestionAnswerInput::String(value) => match value {
+                Some(val) => write!(f, "{}", val),
+                None => write!(f, ""),
+            },
+            QuestionAnswerInput::Int(value) => match value {
+                Some(val) => write!(f, "{}", val),
+                None => write!(f, ""),
+            },
+            QuestionAnswerInput::Float(value) => match value {
+                Some(val) => write!(f, "{}", val),
+                None => write!(f, ""),
+            },
+            QuestionAnswerInput::Bool(value) => match value {
+                Some(val) => write!(f, "{}", val),
+                None => write!(f, ""),
+            },
+            QuestionAnswerInput::Option(value) => match value {
+                Some(val) => write!(f, "Some({})", val),
+                None => write!(f, ""),
+            },
+        }
+    }
+}
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
 pub struct BlockAnswer {
     pub id: String,

@@ -102,7 +102,10 @@ impl QuestionaireView for Ui {
             text.to_string()
         };
         println!("\n{}\n({})", text_to_display.bold(), get_valid_input_hint(ht.is_some()).dimmed());
-
+        if let Some(a) = preferred {
+            let preferred_txt = format!("{}", a).yellow().italic();
+            println!("last input (take it with ENTER): {}", preferred_txt);
+        }
         loop {
             let mut input = String::new(); 
             io::stdin().read_line(&mut input).expect("error while reading from stdin");
@@ -119,7 +122,11 @@ impl QuestionaireView for Ui {
                 },
                 other => {
                     if other.len() == 0 {
-                        return print_result_and_return(true);
+                        if let Some(a) = preferred {
+                            return print_result_and_return(a);
+                        } else {
+                            return print_result_and_return(true);
+                        }
                     } else {
                         print_wrong_input(ht.is_some());
                     }
@@ -203,11 +210,27 @@ impl QuestionaireView for Ui {
 
         let text_to_display = format!("[{}/{}] {}", question_entry.pos, question_count, question_entry.query_text);
         println!("\n{}\n({})", text_to_display.bold(), get_valid_input_hint(&question_entry).dimmed());
+        let preferrred_txt = if let Some(a) = preferred {
+            let s = format!("{}", a).yellow().italic();
+            println!("last input (take it with ENTER): {}", s);
+            format!("{}", a)
+        } else {
+            "".to_string()
+        };
 
         loop {
             let mut input = String::new(); 
             io::stdin().read_line(&mut input).expect("error while reading from stdin");
-            let str = input.trim();
+            //let trimmed_input = input.trim();
+
+            let mut str: String = input.trim().to_string();
+
+            if (str.len() == 0) && (preferrred_txt.len() > 0) {
+                if preferrred_txt.len() > 0 {
+                    str = preferrred_txt.clone();
+                };
+            };
+
             if ((str == "h") || (str == "?")) && (question_entry.help_text.is_some()){
                 print_help_text(&question_entry);
             } else {

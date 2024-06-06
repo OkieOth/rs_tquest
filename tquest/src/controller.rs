@@ -129,8 +129,6 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
             break;
         }
     }
-    // TODO, can be removed
-    //persistence.store_block(&sub_block , &block_answer);
     Ok(ControllerResult::Finished(
         AnswerEntry::Block(block_answer)
     ))
@@ -141,20 +139,35 @@ fn run_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
     view: &mut V,
     persistence: &mut P,
     sub_block: &SubBlock, init: bool, question_count: usize) -> Result<ControllerResult> {
-    //self.view.show_proceed_screen("dummy id", "dummy query", "dummy help");
+    fn has_preferred_answer<P: QuestionairePersistence>(id: &str, persistence: &mut P) -> bool {
+        if let Some(i) = persistence.next_answer_id() {
+            let pre = format!("{}_",i);
+            if id.starts_with(&pre) {
+                return true
+            }
+        }
+        false
+    }
+        
+
     let current = if let Some(p) = sub_block.pos {
         p
     } else {
         0
     };
 
+    let preferred = if has_preferred_answer(&sub_block.id, persistence) {
+        Some(true)
+    } else {
+        None
+    };
     match view.show_proceed_screen(
         &sub_block.id,
         &sub_block.start_text,
         sub_block.help_text.as_deref(),
         question_count,
         current,
-        None
+        preferred,
     )? {
         ProceedScreenResult::Canceled => {
             return Ok(ControllerResult::Canceled);
@@ -270,8 +283,6 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
             }
         }
     }
-    // TODO, can it be removed?
-    //persistence.store_repeated_question(&repeated_question , &answers);
     Ok(ControllerResult::Finished(
         AnswerEntry::RepeatedQuestion(answers)
     ))
