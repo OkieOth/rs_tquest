@@ -29,8 +29,8 @@ pub enum MsgLevel {
 
 pub trait QuestionaireView {
     fn print_title<'a>(&mut self, _title: &str) {}
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T, question_count: usize, current: usize) -> Result<ProceedScreenResult>;
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize) -> Result<QuestionScreenResult>;
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T, question_count: usize, current: usize, preferred: Option<bool>) -> Result<ProceedScreenResult>;
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize, preferred: Option<QuestionAnswerInput>) -> Result<QuestionScreenResult>;
     fn show_msg(&mut self, _msg: &str, _level: MsgLevel) {}
 }
 
@@ -68,7 +68,7 @@ impl QuestionaireView for Ui {
         }
     }
 
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, help_text: T, question_count: usize, current: usize) -> Result<ProceedScreenResult> {
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, help_text: T, question_count: usize, current: usize, preferred: Option<bool>) -> Result<ProceedScreenResult> {
         const YES: &str = "yes";
         const NO: &str = "no";
 
@@ -128,7 +128,7 @@ impl QuestionaireView for Ui {
         }
     }
 
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize) -> Result<QuestionScreenResult>{
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize, preferred: Option<QuestionAnswerInput>) -> Result<QuestionScreenResult>{
         fn get_valid_input_hint(question_entry: &QuestionEntry) -> String {
             let mut s: String = match &question_entry.entry_type {
                 EntryType::String (s) => {

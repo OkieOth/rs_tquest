@@ -1,5 +1,5 @@
 use crate::{
-    persistence::{self, QuestionairePersistence}, questionaire::{AnswerEntry, BlockAnswer, QuestionAnswerInput, Questionaire, RepeatedQuestionEntry, SubBlock}, ui::{MsgLevel, ProceedScreenResult, QuestionScreenResult, QuestionaireView}, QuestionEntry, QuestionaireEntry
+    persistence::QuestionairePersistence, questionaire::{AnswerEntry, BlockAnswer, QuestionAnswerInput, Questionaire, RepeatedQuestionEntry, SubBlock}, ui::{MsgLevel, ProceedScreenResult, QuestionScreenResult, QuestionaireView}, QuestionEntry, QuestionaireEntry
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -65,10 +65,11 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
             // ask the sub-queries ...
             match e {
                 QuestionaireEntry::Question(q) => {
-                    match view.show_question_screen(&q, question_count)? {
+                    let preferred = get_preferred(&q.id, persistence);
+                    match view.show_question_screen(&q, question_count, preferred)? {
                         QuestionScreenResult::Canceled => return Ok(ControllerResult::Canceled),
                         QuestionScreenResult::Proceeded(answer) => {
-                            persistence.store_question(&q , &answer);
+                            let _ = persistence.store_question(&q , &answer);
                             iteration_answers.push(AnswerEntry::Question(answer));
                         }
                     }
@@ -102,7 +103,7 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
                 &sub_block.id,
                 end_text,
                 sub_block.help_text.as_deref(),
-                question_count, current
+                question_count, current, None
             )? {
                 ProceedScreenResult::Canceled => {
                     //return Ok(ControllerResult::Canceled)
@@ -128,7 +129,8 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
             break;
         }
     }
-    persistence.store_block(&sub_block , &block_answer);
+    // TODO, can be removed
+    //persistence.store_block(&sub_block , &block_answer);
     Ok(ControllerResult::Finished(
         AnswerEntry::Block(block_answer)
     ))
@@ -151,7 +153,8 @@ fn run_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
         &sub_block.start_text,
         sub_block.help_text.as_deref(),
         question_count,
-        current
+        current,
+        None
     )? {
         ProceedScreenResult::Canceled => {
             return Ok(ControllerResult::Canceled);
@@ -188,7 +191,6 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
         }
     
 
-    let current = repeated_question.pos;
 
     let mut loop_count: usize = 0;
     let mut answers: Vec<QuestionAnswerInput> = Vec::new();
@@ -214,7 +216,8 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
             .query_text(&question_txt)
             .entry_type(repeated_question.entry_type.clone())
             .build();
-        match view.show_question_screen(&q, question_count)? {
+        let preferred = get_preferred(&repeated_question.id, persistence);
+        match view.show_question_screen(&q, question_count, preferred)? {
             QuestionScreenResult::Canceled => return Ok(ControllerResult::Canceled),
             QuestionScreenResult::Proceeded(answer) => {
                 match &answer {
@@ -223,6 +226,7 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
                             if a.is_none() {
                                 break;
                             }
+                            let _ =persistence.store_question(&q , &answer);
                             answers.push(answer);
                         }
                     },
@@ -231,6 +235,7 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
                             if a.is_none() {
                                 break;
                             }
+                            let _ = persistence.store_question(&q , &answer);
                             answers.push(answer);
                         }
                     },
@@ -239,6 +244,7 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
                             if a.is_none() {
                                 break;
                             }
+                            let _ = persistence.store_question(&q , &answer);
                             answers.push(answer);
                         }
                     },
@@ -247,6 +253,7 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
                             if a.is_none() {
                                 break;
                             }
+                            let _ = persistence.store_question(&q , &answer);
                             answers.push(answer);
                         }                        
                     },
@@ -255,6 +262,7 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
                             if a.is_none() {
                                 break;
                             }
+                            let _ = persistence.store_question(&q , &answer);
                             answers.push(answer);
                         }                        
                     }
@@ -262,17 +270,30 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
             }
         }
     }
-    persistence.store_repeated_question(&repeated_question , &answers);
+    // TODO, can it be removed?
+    //persistence.store_repeated_question(&repeated_question , &answers);
     Ok(ControllerResult::Finished(
         AnswerEntry::RepeatedQuestion(answers)
     ))
 }
 
+fn get_preferred<P: QuestionairePersistence>(id: &str, persistence: &mut P) -> Option<QuestionAnswerInput> {
+    if let Some(i) = persistence.next_answer_id() {
+        if i == id {
+            persistence.next_answer()
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use persistence::NoPersistence;
+    use crate::persistence::NoPersistence;
 
-    use crate::questionaire::{QuestionEntry, EntryType, StringEntry, QuestionAnswerInput};
+    use crate::questionaire::{QuestionAnswerInput, QuestionEntry};
     use crate::test_helper;
     use super::*;
 
@@ -300,7 +321,7 @@ mod tests {
         }
     
         impl QuestionaireView for UiMock {
-            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize, _p: Option<bool>) -> Result<ProceedScreenResult> {
                 if (self.current_step != 0) && (self.current_step != 3) {
                     panic!("unexpected proceed screen: {}: {}", self.current_step, text);
                 }
@@ -308,7 +329,7 @@ mod tests {
                 self.current_step += 1; 
                 Ok(ProceedScreenResult::Proceeded(true))
             }
-            fn show_question_screen(&mut self, question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
+            fn show_question_screen(&mut self, question_entry: &QuestionEntry, _question_count: usize, _p: Option<QuestionAnswerInput>) -> Result<QuestionScreenResult>{
                 if (self.current_step != 1) && (self.current_step != 2) {
                     panic!("unexpected question screen: {}: {}", self.current_step, question_entry.query_text);
                 } 
@@ -320,37 +341,7 @@ mod tests {
     
      
         let ui = UiMock::default();
-        let questionaire = Questionaire::builder()
-            .id("id00")
-            .start_text("In the following questionaire you will be asked about your family and things. Do you want to proceed?")
-            .end_text("All data are collected. Do you want to process them?")
-            .questions(vec![
-                    QuestionaireEntry::Question (
-                        QuestionEntry::builder()
-                        .id("id01")
-                        .query_text("What's your name?")
-                        .entry_type(EntryType::String(
-                            StringEntry::builder()
-                            .min_length(2)
-                            .max_length(100)
-                            .build()
-                        ))
-                        .build()
-                    ),
-                    QuestionaireEntry::Question (
-                        QuestionEntry::builder()
-                        .query_text("What's your date of birth?")
-                        .id("id01")
-                        .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
-                        .entry_type(EntryType::String(
-                            StringEntry::builder()
-                            .regexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                            .build()
-                        ))
-                        .build()
-                    )
-                ])
-            .build();
+        let questionaire = crate::test_helper::create_small_questionaire();
     
         let np = NoPersistence::new();
         let mut c: QuestionaireController<UiMock, NoPersistence> = QuestionaireController::new(questionaire, ui, np);
@@ -378,6 +369,65 @@ mod tests {
     }
 
     #[test]
+    fn it_travers_w_persistence() {
+        use crate::persistence::FileQuestionairePersistence;
+
+        #[derive(Default)]
+        struct UiMock {
+            current_step: usize,
+        }
+    
+        impl QuestionaireView for UiMock {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize, _p: Option<bool>) -> Result<ProceedScreenResult> {
+                if (self.current_step != 0) && (self.current_step != 3) {
+                    panic!("unexpected proceed screen: {}: {}", self.current_step, text);
+                }
+                println!("proceed question: {}", text);
+                self.current_step += 1; 
+                Ok(ProceedScreenResult::Proceeded(true))
+            }
+            fn show_question_screen(&mut self, question_entry: &QuestionEntry, _question_count: usize, _p: Option<QuestionAnswerInput>) -> Result<QuestionScreenResult>{
+                if (self.current_step != 1) && (self.current_step != 2) {
+                    panic!("unexpected question screen: {}: {}", self.current_step, question_entry.query_text);
+                } 
+                println!("normal question: {}", question_entry.query_text);
+                self.current_step += 1; 
+                Ok(QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some(format!("step: {}", self.current_step)))))
+            }
+        }
+    
+     
+        let ui = UiMock::default();
+        let questionaire = crate::test_helper::create_small_questionaire();
+    
+        let mut persistence = FileQuestionairePersistence::new("tmp/tquest.tmp").unwrap();
+        persistence.load(Some("res/tquest.tmp")).expect("fail to load temp file");
+        let mut c: QuestionaireController<UiMock, FileQuestionairePersistence> = QuestionaireController::new(questionaire, ui, persistence);
+        match c.run() {
+            Ok(r) => {
+                match r {
+                    QuestionaireResult::Finished(ba) => {
+                        println!("result: {:?}", &ba);
+                        assert_eq!(1,ba.iterations.len());
+                        let a = ba.iterations.get(0).unwrap();
+                        assert_eq!(2, a.len());
+                        let a0 = a.get(0).unwrap();
+                        validate_question_string_input(&a0, "step: 2");
+                        let a1 = a.get(1).unwrap();
+                        validate_question_string_input(&a1, "step: 3");
+                    },
+                    QuestionaireResult::Canceled => {
+                        panic!("received cancel from a valid questionaire flow");
+                    }
+                }
+            },
+            Err(_) => panic!("received Err as questionaire result"),
+        }
+        
+    }
+
+
+    #[test]
     fn it_travers_cancel_end() {
         
         #[derive(Default)]
@@ -386,7 +436,7 @@ mod tests {
         }
 
         impl QuestionaireView for UiMock2 {
-            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, _help_text: T, _question_count: usize, _current: usize, _p: Option<bool>) -> Result<ProceedScreenResult> {
                 if (self.current_step != 0) && (self.current_step != 3) {
                     panic!("unexpected proceed screen: {}: {}", self.current_step, text);
                 }
@@ -399,7 +449,7 @@ mod tests {
                     Ok(ProceedScreenResult::Proceeded(true))
                 }
             }
-            fn show_question_screen(&mut self, question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
+            fn show_question_screen(&mut self, question_entry: &QuestionEntry, _question_count: usize, _p: Option<QuestionAnswerInput>) -> Result<QuestionScreenResult>{
                 if (self.current_step != 1) && (self.current_step != 2) {
                     panic!("unexpected question screen: {}: {}", self.current_step, question_entry.query_text);
                 } 
@@ -442,7 +492,7 @@ mod tests {
         }
     
         impl QuestionaireView for UiMock {
-            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, _text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, _text: &str, _help_text: T, _question_count: usize, _current: usize, _p: Option<bool>) -> Result<ProceedScreenResult> {
                 let ret = match self.current_step {
                     0 => ProceedScreenResult::Proceeded(true),  // Start
                     3 => ProceedScreenResult::Proceeded(false), // Siblings
@@ -455,7 +505,7 @@ mod tests {
                 self.current_step += 1;
                 Ok(ret)
             }
-            fn show_question_screen(&mut self, _question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
+            fn show_question_screen(&mut self, _question_entry: &QuestionEntry, _question_count: usize, _p: Option<QuestionAnswerInput>) -> Result<QuestionScreenResult>{
                 let ret = match self.current_step {
                     1 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("Homer".to_string()))),
                     2 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("1956-03-12".to_string()))),
@@ -505,7 +555,7 @@ mod tests {
         }
     
         impl QuestionaireView for UiMock {
-            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, _text: &str, _help_text: T, _question_count: usize, _current: usize) -> Result<ProceedScreenResult> {
+            fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, _text: &str, _help_text: T, _question_count: usize, _current: usize, _p: Option<bool>) -> Result<ProceedScreenResult> {
                 let ret = match self.current_step {
                     0 => ProceedScreenResult::Proceeded(true),  // Start
                     3 => ProceedScreenResult::Proceeded(false), // Siblings
@@ -518,7 +568,7 @@ mod tests {
                 self.current_step += 1;
                 Ok(ret)
             }
-            fn show_question_screen(&mut self, _question_entry: &QuestionEntry, _question_count: usize) -> Result<QuestionScreenResult>{
+            fn show_question_screen(&mut self, _question_entry: &QuestionEntry, _question_count: usize, _p: Option<QuestionAnswerInput>) -> Result<QuestionScreenResult>{
                 let ret = match self.current_step {
                     1 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("Homer".to_string()))),
                     2 => QuestionScreenResult::Proceeded(QuestionAnswerInput::String(Some("1956-03-12".to_string()))),
