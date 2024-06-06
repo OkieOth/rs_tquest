@@ -26,7 +26,6 @@ pub enum MsgLevel {
     Critical,
 }
 
-
 pub trait QuestionaireView {
     fn print_title<'a>(&mut self, _title: &str) {}
     fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T, question_count: usize, current: usize, preferred: Option<bool>) -> Result<ProceedScreenResult>;
@@ -40,12 +39,14 @@ trait ViewHelper {
 
 
 pub struct Ui {
+    pub fast_forward: bool,
 }
 
 
 impl Ui  {
     pub fn new() -> Result<Self> {
         Ok(Self {
+            fast_forward: false,
         }) 
     }
 }

@@ -138,7 +138,9 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
 fn run_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
     view: &mut V,
     persistence: &mut P,
-    sub_block: &SubBlock, init: bool, question_count: usize) -> Result<ControllerResult> {
+    sub_block: &SubBlock,
+    init: bool, 
+    question_count: usize) -> Result<ControllerResult> {
     fn has_preferred_answer<P: QuestionairePersistence>(id: &str, persistence: &mut P) -> bool {
         if let Some(i) = persistence.next_answer_id() {
             let pre = format!("{}_",i);

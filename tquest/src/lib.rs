@@ -43,6 +43,7 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
 
     let persistence_file_exists = check_for_old_persistence_file();
 
+    let mut has_fast_forward_option = false;
     if persistence_file_exists {
         let r = ui.show_proceed_screen("00", "Found persistence file, for a questionaire. Do you want to load it to proceed where you stopped last time?", None, 0, 0, None);
         match r {
@@ -54,6 +55,7 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
                     ProceedScreenResult::Proceeded(p) => {
                         if p {
                             let _ = persistence.load(Some(PERSISTENCE_FILE_NAME));
+                            has_fast_forward_option = true;
                         }
                     },
                 }
@@ -64,12 +66,15 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
         };
     }
 
+    if let Ok(ProceedScreenResult::Proceeded(x)) = ui.show_proceed_screen("00", "Do you want to autofil all recent entries? As alternative type 'n' and walk guided through the old results.", None, 0, 0, None) {
+        ui.fast_forward = x
+    };
+
     let mut c: QuestionaireController<Ui, FileQuestionairePersistence> = QuestionaireController::new(questionaire, ui, persistence);
     if persistence_file_exists {
         remove_persistence_file();
     }
     c.run()
-
 }
 
 
