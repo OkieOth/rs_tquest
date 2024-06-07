@@ -2,6 +2,7 @@
 use anyhow::Result;
 use colored::Colorize;
 use std::io;
+use anyhow::anyhow;
 
 use crate::questionaire::{QuestionAnswerInput, QuestionEntry, StringEntry, 
     IntEntry, FloatEntry, BoolEntry, OptionEntry, EntryType};
@@ -107,6 +108,14 @@ impl QuestionaireView for Ui {
             let preferred_txt = format!("{}", a).yellow().italic();
             println!("last input (take it with ENTER): {}", preferred_txt);
         }
+        if self.fast_forward  && preferred.is_some() {
+            // fast forward mode
+            if let Some(a) = preferred {
+                return print_result_and_return(a);
+            } else {
+                return print_result_and_return(true);
+            }
+        }
         loop {
             let mut input = String::new(); 
             io::stdin().read_line(&mut input).expect("error while reading from stdin");
@@ -209,10 +218,42 @@ impl QuestionaireView for Ui {
             println!("\n{}\n",msg.italic());
         }
 
+        fn validate_input(str: &str, entry_type: &EntryType, required: bool) -> Result<QuestionAnswerInput> {
+            match entry_type {
+                EntryType::String (s) => {
+                    s.validate(&str, required)
+                },
+                EntryType::Int(s) => {
+                    s.validate(&str, required)
+                },
+                EntryType::Float(s) => {
+                    s.validate(&str, required)
+                },
+                EntryType::Bool(s) => {
+                    s.validate(&str, required)
+                },
+                EntryType::Option(s) => {
+                    s.validate(&str, required)
+                },
+                _ => {
+                    panic!("unexpected EntryType for question screen");
+                }
+            }
+        }
+
         let text_to_display = format!("[{}/{}] {}", question_entry.pos, question_count, question_entry.query_text);
         println!("\n{}\n({})", text_to_display.bold(), get_valid_input_hint(&question_entry).dimmed());
-        let preferrred_txt = if let Some(a) = preferred {
+        let preferred_txt = if let Some(a) = preferred {
             let s = format!("{}", a).yellow().italic();
+            if self.fast_forward {
+                // fast forward mode
+                let input_txt: String = a.to_string();
+                if let Ok(ret) = validate_input(&input_txt, &question_entry.entry_type, question_entry.required) {
+                    // validate was ok ...
+                    return print_result_and_return(a);
+                }
+            }
+    
             println!("last input (take it with ENTER): {}", s);
             format!("{}", a)
         } else {
@@ -226,35 +267,16 @@ impl QuestionaireView for Ui {
 
             let mut str: String = input.trim().to_string();
 
-            if (str.len() == 0) && (preferrred_txt.len() > 0) {
-                if preferrred_txt.len() > 0 {
-                    str = preferrred_txt.clone();
+            if (str.len() == 0) && (preferred_txt.len() > 0) {
+                if preferred_txt.len() > 0 {
+                    str = preferred_txt.clone();
                 };
             };
 
             if ((str == "h") || (str == "?")) && (question_entry.help_text.is_some()){
                 print_help_text(&question_entry);
-            } else {
-                if let Ok(ret) = match &question_entry.entry_type {
-                    EntryType::String (s) => {
-                        s.validate(&str, question_entry.required)
-                    },
-                    EntryType::Int(s) => {
-                        s.validate(&str, question_entry.required)
-                    },
-                    EntryType::Float(s) => {
-                        s.validate(&str, question_entry.required)
-                    },
-                    EntryType::Bool(s) => {
-                        s.validate(&str, question_entry.required)
-                    },
-                    EntryType::Option(s) => {
-                        s.validate(&str, question_entry.required)
-                    },
-                    _ => {
-                        panic!("unexpected EntryType for question screen");
-                    }
-                } {
+            } else {                
+                if let Ok(ret) = validate_input(&str, &question_entry.entry_type, question_entry.required) {
                     // validate was ok ...
                     return print_result_and_return(ret);
                 } else {

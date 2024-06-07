@@ -99,11 +99,17 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
             } else {
                 0
             };
+            // in fast-forward mode this can be skipped if there is noch answer with the right prefix in the loaded data
+            let preferred = if ! has_preferred_block_answer(&sub_block.id, persistence) {
+                Some(false)
+            } else {
+                None
+            };     
             match view.show_proceed_screen(
                 &sub_block.id,
                 end_text,
                 sub_block.help_text.as_deref(),
-                question_count, current, None
+                question_count, current, preferred
             )? {
                 ProceedScreenResult::Canceled => {
                     //return Ok(ControllerResult::Canceled)
@@ -134,23 +140,22 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
     ))
 }
 
+fn has_preferred_block_answer<P: QuestionairePersistence>(id: &str, persistence: &mut P) -> bool {
+    if let Some(i) = persistence.next_answer_id() {
+        let pre = format!("{}_", id);
+        if i.starts_with(&pre) {
+            return true
+        }
+    }
+    false
+}
 
 fn run_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
     view: &mut V,
     persistence: &mut P,
     sub_block: &SubBlock,
     init: bool, 
-    question_count: usize) -> Result<ControllerResult> {
-    fn has_preferred_answer<P: QuestionairePersistence>(id: &str, persistence: &mut P) -> bool {
-        if let Some(i) = persistence.next_answer_id() {
-            let pre = format!("{}_",i);
-            if id.starts_with(&pre) {
-                return true
-            }
-        }
-        false
-    }
-        
+    question_count: usize) -> Result<ControllerResult> {        
 
     let current = if let Some(p) = sub_block.pos {
         p
@@ -158,7 +163,7 @@ fn run_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
         0
     };
 
-    let preferred = if has_preferred_answer(&sub_block.id, persistence) {
+    let preferred = if has_preferred_block_answer(&sub_block.id, persistence) || init {
         Some(true)
     } else {
         None
@@ -209,6 +214,7 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
 
     let mut loop_count: usize = 0;
     let mut answers: Vec<QuestionAnswerInput> = Vec::new();
+    let mut has_preferred = false; // this is needed to skip in fast-forward mode
     loop {
         loop_count += 1;
         if (repeated_question.max_count>0) && (loop_count > repeated_question.max_count) {
@@ -231,7 +237,14 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
             .query_text(&question_txt)
             .entry_type(repeated_question.entry_type.clone())
             .build();
-        let preferred = get_preferred(&repeated_question.id, persistence);
+        let mut preferred = get_preferred(&repeated_question.id, persistence);
+        if preferred.is_some() {
+            has_preferred = true
+        } else {
+            if has_preferred {
+                preferred = Some(QuestionAnswerInput::String(None));
+            }
+        }
         match view.show_question_screen(&q, question_count, preferred)? {
             QuestionScreenResult::Canceled => return Ok(ControllerResult::Canceled),
             QuestionScreenResult::Proceeded(answer) => {

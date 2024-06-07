@@ -28,7 +28,7 @@ impl FileQuestionairePersistence  {
         let ret = FileQuestionairePersistence {
             file: file.to_string(),
             data: vec![],
-            debug: true,
+            debug: false,
             current_pos: 0,
         };
         Ok(ret)
