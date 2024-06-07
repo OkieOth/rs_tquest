@@ -4,22 +4,76 @@ mod questionaire;
 
 mod controller;
 
-use controller::{QController, QuestionaireResult};
-use anyhow::Result;
+mod persistence;
 
-pub use questionaire::{Questionaire, QuestionaireBuilder, QuestionaireEntry, QuestionEntry, 
+use controller::{QuestionaireController, QuestionaireResult};
+use anyhow::{anyhow, Result};
+use ui::{ProceedScreenResult, QuestionaireView};
+
+use std::{fs, path::Path};
+
+use persistence::{FileQuestionairePersistence, QuestionairePersistence};
+pub use questionaire::{Questionaire, QuestionaireBuilder, QuestionaireEntry, QuestionEntry, RepeatedQuestionEntry, 
     SubBlock, EntryType, StringEntry, IntEntry, FloatEntry, BoolEntry, 
     OptionEntry};
 
-use ui::QuestionaireView;
 pub use ui::Ui;
 
+const PERSISTENCE_FILE_NAME: &str = "tquest.tmp";
+
+
 pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<QuestionaireResult> {
+    fn check_for_old_persistence_file() -> bool {
+        let p = Path::new(PERSISTENCE_FILE_NAME);
+        p.is_file()
+    }
+
+    fn remove_persistence_file() {
+        let p = Path::new(PERSISTENCE_FILE_NAME);
+        if p.is_file() {
+            let _ = fs::remove_file(p);
+        }
+    }
+
     let mut ui: Ui = Ui::new()?;
     if title.len() > 0 {
         ui.print_title(title);
     }
-    let mut c: QController<Ui> = QController::new(questionaire, ui);
+    let mut persistence = FileQuestionairePersistence::new(PERSISTENCE_FILE_NAME)?;
+
+    let persistence_file_exists = check_for_old_persistence_file();
+
+    let mut has_fast_forward_option = false;
+    if persistence_file_exists {
+        let r = ui.show_proceed_screen("00", "Found persistence file, for a questionaire. Do you want to load it to proceed where you stopped last time?", None, 0, 0, None);
+        match r {
+            Ok(res) => {
+                match res {
+                    ProceedScreenResult::Canceled => {
+                        return Err(anyhow!("Canceled by user"));
+                    },
+                    ProceedScreenResult::Proceeded(p) => {
+                        if p {
+                            let _ = persistence.load(Some(PERSISTENCE_FILE_NAME));
+                            has_fast_forward_option = true;
+                        }
+                    },
+                }
+            },
+            Err(_) => {
+                return Err(anyhow!("error while processing"));
+            },
+        };
+    }
+
+    if let Ok(ProceedScreenResult::Proceeded(x)) = ui.show_proceed_screen("00", "Do you want to autofil all recent entries? As alternative type 'n' and walk guided through the old results.", None, 0, 0, None) {
+        ui.fast_forward = x
+    };
+
+    let mut c: QuestionaireController<Ui, FileQuestionairePersistence> = QuestionaireController::new(questionaire, ui, persistence);
+    if persistence_file_exists {
+        remove_persistence_file();
+    }
     c.run()
 }
 
@@ -35,10 +89,39 @@ mod tests {
 #[cfg(test)]
 mod test_helper {
     use crate::{
-        questionaire::{AnswerEntry, BlockAnswer, Questionaire, SubBlock, StringEntry, QuestionEntry, 
+        questionaire::{Questionaire, SubBlock, StringEntry, QuestionEntry, 
             EntryType, OptionEntry},
         QuestionaireEntry,
     };
+
+    use std::{io::Write, path::Path};
+    use std::fs::{File, remove_file};
+
+
+    #[test]
+    fn test_json() {
+        let p = Path::new("tmp");
+        if ! p.is_dir() {
+            let _ = std::fs::create_dir(p);
+        }
+        let pf = Path::new("tmp/test.json");
+        if p.is_file() {
+            let _ = remove_file(pf);
+        }
+
+        assert!(!p.is_file());
+    
+        let q = create_complex_questionaire();
+        let json_string = serde_json::to_string(&q).unwrap();
+
+        let mut file = File::create("tmp/test.json").unwrap();
+        let _ = file.write_all(json_string.as_bytes());
+
+        assert!(pf.is_file());
+
+        let q2: Questionaire = serde_json::from_str(&json_string).unwrap();
+        assert_eq!(q, q2);
+    }
     
     pub fn create_small_questionaire() -> Questionaire {
         Questionaire::builder()
@@ -54,9 +137,9 @@ mod test_helper {
                             StringEntry::builder()
                             .min_length(2)
                             .max_length(100)
-                            .build().unwrap()
+                            .build()
                         ))
-                        .build().unwrap(),
+                        .build()
                     ),
                     QuestionaireEntry::Question (
                         QuestionEntry::builder()
@@ -65,16 +148,16 @@ mod test_helper {
                         .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
                         .entry_type(EntryType::String(
                             StringEntry::builder()
-                            .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                            .build().unwrap()
+                            .regexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                            .build()
                         ))
-                        .build().unwrap()
+                        .build()
                     )
                 ])
             .build()
     }
 
-    pub fn build_complex_questionaire() -> Questionaire {
+    pub fn create_complex_questionaire() -> Questionaire {
         fn get_brother_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
             vec![
                 QuestionaireEntry::Question (
@@ -85,9 +168,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(50)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap(),
+                    .build()
                 ),
                 QuestionaireEntry::Question (
                     QuestionEntry::builder()
@@ -96,10 +179,10 @@ mod test_helper {
                     .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
                     .entry_type(EntryType::String(
                         StringEntry::builder()
-                        .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                        .build().unwrap()
+                        .regexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
             ]
         }
@@ -114,9 +197,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(50)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap(),
+                    .build()
                 ),
                 QuestionaireEntry::Question (
                     QuestionEntry::builder()
@@ -125,10 +208,10 @@ mod test_helper {
                     .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
                     .entry_type(EntryType::String(
                         StringEntry::builder()
-                        .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                        .build().unwrap()
+                        .regexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
             ]
         }
@@ -169,9 +252,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(100)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Question(
                     QuestionEntry::builder()
@@ -185,9 +268,9 @@ mod test_helper {
                             "I was laid off".to_string(),
                             "Other reason".to_string(),
                         ])
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 )
             ]
         }
@@ -202,9 +285,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(200)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Question(
                     QuestionEntry::builder()
@@ -214,9 +297,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(100)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Question(
                     QuestionEntry::builder()
@@ -227,9 +310,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(100)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Block(
                     SubBlock::builder()
@@ -256,9 +339,9 @@ mod test_helper {
                         StringEntry::builder()
                         .min_length(2)
                         .max_length(100)
-                        .build().unwrap()
+                        .build()
                     ))
-                    .build().unwrap(),
+                    .build()
                 ),
                 QuestionaireEntry::Question (
                     QuestionEntry::builder()
@@ -267,10 +350,10 @@ mod test_helper {
                     .help_text("Provide the date of birth in YYYY-MM-DD format".to_string())
                     .entry_type(EntryType::String(
                         StringEntry::builder()
-                        .reqexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
-                        .build().unwrap()
+                        .regexp("\\d\\d\\d\\d-\\d\\d-\\d\\d".to_string())
+                        .build()
                     ))
-                    .build().unwrap()
+                    .build()
                 ),
                 QuestionaireEntry::Block(
                     SubBlock::builder()

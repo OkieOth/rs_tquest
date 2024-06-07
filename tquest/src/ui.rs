@@ -2,6 +2,7 @@
 use anyhow::Result;
 use colored::Colorize;
 use std::io;
+use anyhow::anyhow;
 
 use crate::questionaire::{QuestionAnswerInput, QuestionEntry, StringEntry, 
     IntEntry, FloatEntry, BoolEntry, OptionEntry, EntryType};
@@ -20,11 +21,17 @@ pub enum ProceedScreenResult {
     Proceeded(bool)
 }
 
+pub enum MsgLevel {
+    Normal,
+    Urgent,
+    Critical,
+}
 
 pub trait QuestionaireView {
-    fn print_title<'a>(&mut self, title: &str);
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T, question_count: usize, current: usize) -> Result<ProceedScreenResult>;
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize) -> Result<QuestionScreenResult>;
+    fn print_title<'a>(&mut self, _title: &str) {}
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, id: &str, text: &str, help_text: T, question_count: usize, current: usize, preferred: Option<bool>) -> Result<ProceedScreenResult>;
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize, preferred: Option<QuestionAnswerInput>) -> Result<QuestionScreenResult>;
+    fn show_msg(&mut self, _msg: &str, _level: MsgLevel) {}
 }
 
 trait ViewHelper {
@@ -33,12 +40,14 @@ trait ViewHelper {
 
 
 pub struct Ui {
+    pub fast_forward: bool,
 }
 
 
 impl Ui  {
     pub fn new() -> Result<Self> {
         Ok(Self {
+            fast_forward: false,
         }) 
     }
 }
@@ -50,7 +59,18 @@ impl QuestionaireView for Ui {
         println!("\n{}\n", title.bold().underline());
     }
 
-    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, help_text: T, question_count: usize, current: usize) -> Result<ProceedScreenResult> {
+    fn show_msg<'a>(&mut self, msg: &str, level: MsgLevel) {
+        match level {
+            MsgLevel::Normal => {
+                println!("\n{}\n", msg.italic());
+            },
+            _ => {
+                println!("\n{}\n", msg.yellow().italic());
+            }
+        }
+    }
+
+    fn show_proceed_screen<'a, T: Into<Option<&'a str>>>(&mut self, _id: &str, text: &str, help_text: T, question_count: usize, current: usize, preferred: Option<bool>) -> Result<ProceedScreenResult> {
         const YES: &str = "yes";
         const NO: &str = "no";
 
@@ -83,8 +103,19 @@ impl QuestionaireView for Ui {
         } else {
             text.to_string()
         };
-        println!("\n{} ({})", text_to_display.bold(), get_valid_input_hint(ht.is_some()).dimmed());
-
+        println!("\n{}\n({})", text_to_display.bold(), get_valid_input_hint(ht.is_some()).dimmed());
+        if let Some(a) = preferred {
+            let preferred_txt = format!("{}", a).yellow().italic();
+            println!("last input (take it with ENTER): {}", preferred_txt);
+        }
+        if self.fast_forward  && preferred.is_some() {
+            // fast forward mode
+            if let Some(a) = preferred {
+                return print_result_and_return(a);
+            } else {
+                return print_result_and_return(true);
+            }
+        }
         loop {
             let mut input = String::new(); 
             io::stdin().read_line(&mut input).expect("error while reading from stdin");
@@ -101,7 +132,11 @@ impl QuestionaireView for Ui {
                 },
                 other => {
                     if other.len() == 0 {
-                        return print_result_and_return(true);
+                        if let Some(a) = preferred {
+                            return print_result_and_return(a);
+                        } else {
+                            return print_result_and_return(true);
+                        }
                     } else {
                         print_wrong_input(ht.is_some());
                     }
@@ -110,7 +145,7 @@ impl QuestionaireView for Ui {
         }
     }
 
-    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize) -> Result<QuestionScreenResult>{
+    fn show_question_screen(&mut self, question_entry: &QuestionEntry, question_count: usize, preferred: Option<QuestionAnswerInput>) -> Result<QuestionScreenResult>{
         fn get_valid_input_hint(question_entry: &QuestionEntry) -> String {
             let mut s: String = match &question_entry.entry_type {
                 EntryType::String (s) => {
@@ -138,8 +173,34 @@ impl QuestionaireView for Ui {
             s
         }
 
-        fn print_result_and_return(input_str: &str, ret: QuestionAnswerInput) -> Result<QuestionScreenResult> {
-            println!(">>> {}", format!("{}", input_str).green());
+        fn print_result_and_return(ret: QuestionAnswerInput) -> Result<QuestionScreenResult> {
+            match &ret {
+                QuestionAnswerInput::String(x) => {
+                    if let Some(v) =x {
+                        println!(">>> {}", format!("{}", v).green());
+                    }
+                },
+                QuestionAnswerInput::Int(x) => {
+                    if let Some(v) =x {
+                        println!(">>> {}", format!("{}", v).green());
+                    }
+                },
+                QuestionAnswerInput::Float(x) => {
+                    if let Some(v) =x {
+                        println!(">>> {}", format!("{}", v).green());
+                    }
+                },
+                QuestionAnswerInput::Bool(x) => {
+                    if let Some(v) =x {
+                        println!(">>> {}", format!("{}", v).green());
+                    }
+                },
+                QuestionAnswerInput::Option(x) => {
+                    if let Some(v) =x {
+                        println!(">>> {}", format!("{}", v).green());
+                    }
+                }
+            }
             return Ok(QuestionScreenResult::Proceeded(ret));
         }
 
@@ -148,41 +209,79 @@ impl QuestionaireView for Ui {
             println!("{}",msg.yellow());
         }
 
-        let text_to_display = if let Some(p) = question_entry.pos {
-            format!("[{}/{}] {}", p, question_count, question_entry.query_text)
-        } else {
-            question_entry.query_text.clone()
-        };
-        println!("\n{} ({})", text_to_display.bold(), get_valid_input_hint(&question_entry).dimmed());
+        fn print_help_text(question_entry: &QuestionEntry) {
+            let msg = if let Some(help_text) = &question_entry.help_text {
+                format!("Help: {}", help_text)
+            } else {
+                "no help available".to_string()
+            };
+            println!("\n{}\n",msg.italic());
+        }
 
-        loop {
-            let mut input = String::new(); 
-            io::stdin().read_line(&mut input).expect("error while reading from stdin");
-            let str = input.trim();
-            if let Ok(ret) = match &question_entry.entry_type {
+        fn validate_input(str: &str, entry_type: &EntryType, required: bool) -> Result<QuestionAnswerInput> {
+            match entry_type {
                 EntryType::String (s) => {
-                    s.validate(&str)
+                    s.validate(&str, required)
                 },
                 EntryType::Int(s) => {
-                    s.validate(&str)
+                    s.validate(&str, required)
                 },
                 EntryType::Float(s) => {
-                    s.validate(&str)
+                    s.validate(&str, required)
                 },
                 EntryType::Bool(s) => {
-                    s.validate(&str)
+                    s.validate(&str, required)
                 },
                 EntryType::Option(s) => {
-                    s.validate(&str)
+                    s.validate(&str, required)
                 },
                 _ => {
                     panic!("unexpected EntryType for question screen");
                 }
-            } {
-                // validate was ok ...
-                return print_result_and_return(str, ret);
-            } else {
-                print_wrong_input(question_entry);
+            }
+        }
+
+        let text_to_display = format!("[{}/{}] {}", question_entry.pos, question_count, question_entry.query_text);
+        println!("\n{}\n({})", text_to_display.bold(), get_valid_input_hint(&question_entry).dimmed());
+        let preferred_txt = if let Some(a) = preferred {
+            let s = format!("{}", a).yellow().italic();
+            if self.fast_forward {
+                // fast forward mode
+                let input_txt: String = a.to_string();
+                if let Ok(ret) = validate_input(&input_txt, &question_entry.entry_type, question_entry.required) {
+                    // validate was ok ...
+                    return print_result_and_return(a);
+                }
+            }
+    
+            println!("last input (take it with ENTER): {}", s);
+            format!("{}", a)
+        } else {
+            "".to_string()
+        };
+
+        loop {
+            let mut input = String::new(); 
+            io::stdin().read_line(&mut input).expect("error while reading from stdin");
+            //let trimmed_input = input.trim();
+
+            let mut str: String = input.trim().to_string();
+
+            if (str.len() == 0) && (preferred_txt.len() > 0) {
+                if preferred_txt.len() > 0 {
+                    str = preferred_txt.clone();
+                };
+            };
+
+            if ((str == "h") || (str == "?")) && (question_entry.help_text.is_some()){
+                print_help_text(&question_entry);
+            } else {                
+                if let Ok(ret) = validate_input(&str, &question_entry.entry_type, question_entry.required) {
+                    // validate was ok ...
+                    return print_result_and_return(ret);
+                } else {
+                    print_wrong_input(question_entry);
+                }
             }
         }
     }
@@ -201,7 +300,7 @@ impl ViewHelper for StringEntry {
         if let Some(max) = self.max_length {
             s.push_str(&format!(", max-length: {}", max));
         }
-        if let Some(regexp) = self.reqexp.as_ref() {
+        if let Some(regexp) = self.regexp.as_ref() {
             s.push_str(&format!(", regexp: {}", regexp));
         }
         s
