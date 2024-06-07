@@ -59,6 +59,7 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
         id: sub_block.id.clone(),
         iterations: Vec::new(),
     };
+    let mut has_preferred = false;
     loop {
         let mut iteration_answers: Vec<AnswerEntry> = Vec::new();
         for e in &sub_block.entries {
@@ -66,6 +67,9 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
             match e {
                 QuestionaireEntry::Question(q) => {
                     let preferred = get_preferred(&q.id, persistence);
+                    if ! has_preferred {
+                        has_preferred = true;
+                    }
                     match view.show_question_screen(&q, question_count, preferred)? {
                         QuestionScreenResult::Canceled => return Ok(ControllerResult::Canceled),
                         QuestionScreenResult::Proceeded(answer) => {
@@ -99,12 +103,24 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
             } else {
                 0
             };
-            // in fast-forward mode this can be skipped if there is noch answer with the right prefix in the loaded data
-            let preferred = if ! has_preferred_block_answer(&sub_block.id, persistence) {
-                Some(false)
-            } else {
-                None
-            };     
+            let preferred = match has_preferred_block_answer(&sub_block.id, persistence) {
+                PreferredBlockAnswer::Exist => Some(true),
+                PreferredBlockAnswer::NextHasWrongId => Some(false),
+                _ => None,
+            };
+        
+            // let preferred = if has_preferred_block_answer(&sub_block.id, persistence) {
+            //     println!("DEBUG: 5");
+            //     Some(true)
+            // } else {
+            //     if has_preferred {
+            //         println!("DEBUG: 6");
+            //         Some(false)
+            //     } else {
+            //         println!("DEBUG: 7");
+            //         None
+            //     }
+            // };     
             match view.show_proceed_screen(
                 &sub_block.id,
                 end_text,
@@ -140,14 +156,22 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
     ))
 }
 
-fn has_preferred_block_answer<P: QuestionairePersistence>(id: &str, persistence: &mut P) -> bool {
+enum PreferredBlockAnswer {
+    NoMoreAnswers,
+    NextHasWrongId,
+    Exist,
+}
+
+fn has_preferred_block_answer<P: QuestionairePersistence>(id: &str, persistence: &mut P) -> PreferredBlockAnswer {
     if let Some(i) = persistence.next_answer_id() {
         let pre = format!("{}_", id);
         if i.starts_with(&pre) {
-            return true
+            return PreferredBlockAnswer::Exist;
+        } else {
+            return PreferredBlockAnswer::NextHasWrongId;
         }
     }
-    false
+    PreferredBlockAnswer::NoMoreAnswers
 }
 
 fn run_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
@@ -163,11 +187,16 @@ fn run_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
         0
     };
 
-    let preferred = if has_preferred_block_answer(&sub_block.id, persistence) || init {
-        Some(true)
-    } else {
-        None
+    let mut preferred = match has_preferred_block_answer(&sub_block.id, persistence) {
+        PreferredBlockAnswer::Exist => Some(true),
+        PreferredBlockAnswer::NextHasWrongId => Some(false),
+        _ => None,
     };
+    if init {
+        preferred = Some(true)
+    };
+
+
     match view.show_proceed_screen(
         &sub_block.id,
         &sub_block.start_text,

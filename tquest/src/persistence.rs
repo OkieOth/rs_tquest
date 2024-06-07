@@ -57,7 +57,8 @@ impl FileQuestionairePersistence  {
 
 impl QuestionairePersistence for FileQuestionairePersistence {
     fn store_question(&mut self, entry: &QuestionEntry, data: &QuestionAnswerInput) -> Result<()> {
-        self.data.push((entry.id.to_string(), data.clone()));
+        // TODO: remove, that mess up the load and fast-forward mode ... and it's not needed
+        //self.data.push((entry.id.to_string(), data.clone()));
         self.store(&entry.id, data)
     }
 
