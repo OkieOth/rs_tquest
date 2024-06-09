@@ -27,13 +27,14 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
         let p = Path::new(PERSISTENCE_FILE_NAME);
         p.is_file()
     }
-
+    
     fn remove_persistence_file() {
         let p = Path::new(PERSISTENCE_FILE_NAME);
         if p.is_file() {
             let _ = fs::remove_file(p);
         }
     }
+    
 
     let mut ui: Ui = Ui::new()?;
     if title.len() > 0 {
@@ -43,7 +44,6 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
 
     let persistence_file_exists = check_for_old_persistence_file();
 
-    let mut has_fast_forward_option = false;
     if persistence_file_exists {
         let r = ui.show_proceed_screen("00", "Found persistence file, for a questionaire. Do you want to load it to proceed where you stopped last time?", None, 0, 0, None);
         match r {
@@ -55,7 +55,6 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
                     ProceedScreenResult::Proceeded(p) => {
                         if p {
                             let _ = persistence.load(Some(PERSISTENCE_FILE_NAME));
-                            has_fast_forward_option = true;
                         }
                     },
                 }
@@ -80,10 +79,53 @@ pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<Quest
 
 #[cfg(test)]
 mod tests {
+    use crate::*;
 
     #[test]
-    fn it_works() {
+    fn test_fast_forward() {
+        use test_helper::create_complex_questionaire;
+        // Thread start - here
+        let tmp_file = "tmp/test_persistence.tmp";
+        let source_file = "res/tquest.tmp";
+        let mut persistence = FileQuestionairePersistence::new(tmp_file).unwrap();
+        persistence.load(Some(source_file)).expect("error while loading 'res/tquest.tmp'");
+        let mut ui: Ui = Ui::new().expect("error while crating UI");
+        ui.fast_forward =  true;
+        let questionaire = create_complex_questionaire();
+        let mut c: QuestionaireController<Ui, FileQuestionairePersistence> = QuestionaireController::new(questionaire, ui, persistence);
+
+        let p = Path::new(tmp_file);
+        if p.is_file() {
+            let _ = fs::remove_file(p);
+        }
+
+        // Channel for communication
+        let (tx, rx) = std::sync::mpsc::channel::<()>();
+        std::thread::spawn(move || {
+            let _ = c.run();
+            tx.send(()).expect("Error sending termination signal"); // Signal thread termination
+        });
+
+    // Wait for thread or timeout
+        let result = rx.recv_timeout(std::time::Duration::from_secs(2));
+
+        // Handle results
+        match result {
+            Ok(_) => panic!("Thread finished execution within timeout"),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                // TODO compare the input with the output file ...
+                if let Ok(v) = test_helper::is_same_file(tmp_file, source_file) {
+                    assert!(v);
+                } else {
+                    panic!("something went wrong");
+                }
+            },
+            Err(_) => panic!("Error receiving termination signal"),
+        }
+        
     }
+
+
 }
 
 #[cfg(test)]
@@ -96,6 +138,8 @@ mod test_helper {
 
     use std::{io::Write, path::Path};
     use std::fs::{File, remove_file};
+    use std::io::{BufReader, Read};
+
 
 
     #[test]
@@ -376,5 +420,26 @@ mod test_helper {
             ]
         )
         .build()
+    }
+
+    pub fn is_same_file(file1: &str, file2: &str) -> Result<bool, std::io::Error> {
+      let mut f1 = BufReader::new(File::open(file1)?);
+      let mut f2 = BufReader::new(File::open(file2)?);
+      // Check file sizes first
+      if f1.get_ref().metadata()?.len() != f2.get_ref().metadata()?.len() {
+        return Ok(false);
+      }
+      let mut buf1 = [0; 4096]; // Read in chunks of 4096 bytes
+      let mut buf2 = [0; 4096];
+      loop {
+        let n1 = f1.read(&mut buf1)?;
+        let n2 = f2.read(&mut buf2)?;
+        if n1 != n2 || &buf1[..n1] != &buf2[..n2] {
+          return Ok(false);
+        }
+        if n1 == 0 {
+          return Ok(true);
+        }
+      }
     }
 }
