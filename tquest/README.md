@@ -23,3 +23,9 @@ to some further processing
    5.1. Where was that job?
    5.2. What company you worked for?
 ...
+
+# Usage
+
+```shell
+cargo test -- --ignored
+```

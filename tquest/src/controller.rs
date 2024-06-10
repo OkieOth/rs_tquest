@@ -98,29 +98,26 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
         }
         block_answer.iterations.push(iteration_answers);
         if let Some(end_text) = sub_block.end_text.as_deref() {
-            let current: usize = if init {
-                question_count
-            } else {
-                0
-            };
-            let preferred = match has_preferred_block_answer(&sub_block.id, persistence) {
+            let mut preferred = match has_preferred_block_answer(&sub_block.id, persistence) {
                 PreferredBlockAnswer::Exist => Some(true),
                 PreferredBlockAnswer::NextHasWrongId => Some(false),
                 _ => None,
             };
+            if init {
+                preferred = None;
+            }
+
+            let current: usize = if init {
+                let dummy_entry = QuestionEntry::builder()
+                .id("00000000")
+                .build();
+                let final_data = QuestionAnswerInput::String(Some("done".to_string()));
+                let _ = persistence.store_question(&dummy_entry, &final_data); // this is included to show that the questionary was finished
+                question_count
+            } else {
+                0
+            };
         
-            // let preferred = if has_preferred_block_answer(&sub_block.id, persistence) {
-            //     println!("DEBUG: 5");
-            //     Some(true)
-            // } else {
-            //     if has_preferred {
-            //         println!("DEBUG: 6");
-            //         Some(false)
-            //     } else {
-            //         println!("DEBUG: 7");
-            //         None
-            //     }
-            // };     
             match view.show_proceed_screen(
                 &sub_block.id,
                 end_text,
@@ -188,14 +185,22 @@ fn run_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
     };
 
     let mut preferred = match has_preferred_block_answer(&sub_block.id, persistence) {
-        PreferredBlockAnswer::Exist => Some(true),
-        PreferredBlockAnswer::NextHasWrongId => Some(false),
-        _ => None,
+        PreferredBlockAnswer::Exist => {
+            println!("DEBUG-XXY-1");
+            Some(true)
+        },
+        PreferredBlockAnswer::NextHasWrongId => {
+            println!("DEBUG-XXY-2");
+            Some(false)
+        },
+        _ => {
+            println!("DEBUG-XXY-3");
+            None
+        },
     };
     if init {
         preferred = Some(true)
     };
-
 
     match view.show_proceed_screen(
         &sub_block.id,
@@ -337,7 +342,7 @@ fn get_preferred<P: QuestionairePersistence>(id: &str, persistence: &mut P) -> O
         if i == id {
             persistence.next_answer()
         } else {
-            None
+            Some(QuestionAnswerInput::String(None))
         }
     } else {
         None

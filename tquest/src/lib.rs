@@ -82,6 +82,7 @@ mod tests {
     use crate::*;
 
     #[test]
+    #[ignore]
     fn test_fast_forward() {
         use test_helper::create_complex_questionaire;
         // Thread start - here
