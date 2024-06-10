@@ -193,7 +193,12 @@ impl OptionEntry {
                 return Err(anyhow!("Default value index is bigger than the options list"));
             }
         } else {
-            return Err(anyhow!("Input can't be cast into the option index."));
+            // check if text is found in the options
+            if self.options.iter().find(|o| *o == input ).is_some() {
+                return Ok(QuestionAnswerInput::Option(Some(input.to_string())));
+            } else {
+                return Err(anyhow!("Input can't be cast into the option index."));
+            }
         };
     }
 }
@@ -420,7 +425,7 @@ impl Display for QuestionAnswerInput {
                 None => write!(f, ""),
             },
             QuestionAnswerInput::Option(value) => match value {
-                Some(val) => write!(f, "Some({})", val),
+                Some(val) => write!(f, "{}", val),
                 None => write!(f, ""),
             },
         }
