@@ -1,5 +1,6 @@
 //! Main types of the questionaire implementation
 //! 
+use std::default;
 use std::str::FromStr;
 use std::fmt::{Display, Formatter};
 
@@ -391,18 +392,21 @@ impl <'a> QuestionaireBuilder<'a> {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum AnswerEntry {
     Block(BlockAnswer),
-    Question(QuestionAnswerInput),
-    RepeatedQuestion(Vec<QuestionAnswerInput>),
+    Question(QuestionAnswer),
+    RepeatedQuestion(RepeatedQuestionAnswers),
 }
 
 
-#[derive(Debug, PartialEq, Deserialize, Serialize, Clone)]
+
+#[derive(Debug, PartialEq, Deserialize, Serialize, Clone, Default)]
 pub enum QuestionAnswerInput {
     String(Option<String>),
     Int(Option<i32>),
     Float(Option<f32>),
     Bool(Option<bool>),
-    Option(Option<String>)
+    Option(Option<String>),
+    #[default]
+    None,
 }
 
 impl Display for QuestionAnswerInput {
@@ -428,6 +432,7 @@ impl Display for QuestionAnswerInput {
                 Some(val) => write!(f, "{}", val),
                 None => write!(f, ""),
             },
+            QuestionAnswerInput::None => write!(f, ""),
         }
     }
 }
@@ -437,6 +442,21 @@ pub struct BlockAnswer {
 
     /// Vector of itereations, with the answers of each iteration in its own vector
     pub iterations: Vec<Vec<AnswerEntry>>,
+}
+
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone, PartialEq)]
+pub struct QuestionAnswer {
+    pub id: String,
+
+    pub answer: QuestionAnswerInput,
+}
+
+#[derive(Debug, Default, Deserialize, Serialize, Clone)]
+pub struct RepeatedQuestionAnswers {
+    pub id: String,
+
+    pub answers: Vec<QuestionAnswerInput>,
 }
 
 #[cfg(test)]

@@ -199,6 +199,9 @@ impl QuestionaireView for Ui {
                     if let Some(v) =x {
                         println!(">>> {}", format!("{}", v).green());
                     }
+                },
+                QuestionAnswerInput::None => {
+                        println!(">>> ???");
                 }
             }
             return Ok(QuestionScreenResult::Proceeded(ret));
