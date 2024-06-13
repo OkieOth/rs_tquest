@@ -452,11 +452,57 @@ pub struct QuestionAnswer {
     pub answer: QuestionAnswerInput,
 }
 
+impl Into<Option<String>> for &QuestionAnswer {
+    // Required method
+    fn into(self) -> Option<String> {
+        if let QuestionAnswerInput::String(s) = &self.answer {
+            if let Some(v) = s {
+                Some(v.to_string())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
+impl Into<Option<bool>> for &QuestionAnswer {
+    // Required method
+    fn into(self) -> Option<bool> {
+        if let QuestionAnswerInput::Bool(s) = &self.answer {
+            if let Some(v) = s {
+                Some(*v)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
+
 #[derive(Debug, Default, Deserialize, Serialize, Clone)]
 pub struct RepeatedQuestionAnswers {
     pub id: String,
 
     pub answers: Vec<QuestionAnswerInput>,
+}
+
+impl Into<Option<Vec<String>>> for &RepeatedQuestionAnswers {
+    // Required method
+    fn into(self) -> Option<Vec<String>> {
+        let mut ret: Vec<String> = vec![];
+        for a in &self.answers {
+            if let QuestionAnswerInput::String(s) = a {
+                if let Some(v) = s {
+                    ret.push(v.to_string())
+                }
+            };    
+        }
+        Some(ret)
+    }
 }
 
 #[cfg(test)]
