@@ -409,6 +409,22 @@ pub enum QuestionAnswerInput {
     None,
 }
 
+impl Into<Option<String>> for &QuestionAnswerInput {
+    // Required method
+    fn into(self) -> Option<String> {
+        if let QuestionAnswerInput::String(s) = &self {
+            if let Some(v) = s {
+                Some(v.to_string())
+            } else {
+                None
+            }
+        } else {
+            None
+        }
+    }
+}
+
+
 impl Display for QuestionAnswerInput {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
