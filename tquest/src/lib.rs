@@ -6,7 +6,7 @@ mod controller;
 
 mod persistence;
 
-use controller::{QuestionaireController, QuestionaireResult};
+use controller::QuestionaireController;
 use anyhow::{anyhow, Result};
 use ui::{ProceedScreenResult, QuestionaireView};
 
@@ -15,8 +15,8 @@ use std::{fs, path::Path};
 use persistence::{FileQuestionairePersistence, QuestionairePersistence};
 pub use questionaire::{Questionaire, QuestionaireBuilder, QuestionaireEntry, QuestionEntry, RepeatedQuestionEntry, 
     SubBlock, EntryType, StringEntry, IntEntry, FloatEntry, BoolEntry, 
-    OptionEntry};
-
+    OptionEntry, BlockAnswer, QuestionAnswerInput, AnswerEntry, RepeatedQuestionAnswers, QuestionAnswer};
+pub use controller::QuestionaireResult;
 pub use ui::Ui;
 
 const PERSISTENCE_FILE_NAME: &str = "tquest.tmp";

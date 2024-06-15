@@ -1,4 +1,4 @@
-use crate::questionaire::{QuestionAnswerInput, QuestionEntry} ;
+use crate::questionaire::{QuestionAnswerInput, QuestionEntry, QuestionAnswer} ;
 use anyhow::{anyhow, Result};
 use colored::Colorize;
 use serde::Serialize;
@@ -12,13 +12,13 @@ use std::io::{BufRead, BufReader};
 pub trait QuestionairePersistence {
     fn store_question(&mut self, entry: &QuestionEntry, data: &QuestionAnswerInput) -> Result<()>;
     fn load(&mut self, source: Option<&str>) -> Result<()>;
-    fn next_answer(&mut self) -> Option<QuestionAnswerInput>;
+    fn next_answer(&mut self) -> Option<QuestionAnswer>;
     fn next_answer_id(&mut self) -> Option<String>;
 }
 
 pub struct FileQuestionairePersistence  {
     file: String,
-    data: Vec<(String, QuestionAnswerInput)>,
+    data: Vec<QuestionAnswer>,
     pub debug: bool,
     current_pos: usize,
 }
@@ -71,11 +71,11 @@ impl QuestionairePersistence for FileQuestionairePersistence {
         }
     }
 
-    fn next_answer(&mut self) -> Option<QuestionAnswerInput> {
+    fn next_answer(&mut self) -> Option<QuestionAnswer> {
         if self.current_pos < self.data.len() {
             let e = self.data.get(self.current_pos);
             self.current_pos += 1;
-            if let Some((_, a)) = e {
+            if let Some(a) = e {
                 return Some(a.clone())
             }
             None
@@ -87,8 +87,8 @@ impl QuestionairePersistence for FileQuestionairePersistence {
     fn next_answer_id(&mut self) -> Option<String> {
         if self.current_pos < self.data.len() {
             let e = self.data.get(self.current_pos);
-            if let Some((id, _)) = e {
-                Some(id.to_string())
+            if let Some(a) = e {
+                Some(a.id.to_string())
             } else {
                 None
             }
@@ -117,7 +117,7 @@ impl QuestionairePersistence for NoPersistence {
         Err(anyhow!("Not supported"))
     }
 
-    fn next_answer(&mut self) -> Option<QuestionAnswerInput> {
+    fn next_answer(&mut self) -> Option<QuestionAnswer> {
         None
     }
 
@@ -127,11 +127,11 @@ impl QuestionairePersistence for NoPersistence {
 
 }
 
-pub fn load_tmp_file(file_path: &str) -> Result<Vec<(String, QuestionAnswerInput)>> {
+pub fn load_tmp_file(file_path: &str) -> Result<Vec<QuestionAnswer>> {
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
 
-    let mut ret: Vec<(String, QuestionAnswerInput)> = Vec::new();
+    let mut ret: Vec<QuestionAnswer> = Vec::new();
 
     for line in reader.lines() {
         let line = line.unwrap();
@@ -142,7 +142,11 @@ pub fn load_tmp_file(file_path: &str) -> Result<Vec<(String, QuestionAnswerInput
             continue;
         };
         if let Ok(o) = serde_json::from_str::<QuestionAnswerInput>(&json_str) {
-            ret.push((id.to_string(), o));
+            let qa = QuestionAnswer {
+                id: id.to_string(),
+                answer: o,
+            };
+            ret.push(qa);
         }
     }
     Ok(ret)
@@ -156,22 +160,22 @@ mod test {
     fn test_load_tmp_file() {
         if let Ok(v) = load_tmp_file("res/tquest.tmp") {
             assert_eq!(14, v.len());
-            v.iter().enumerate().for_each(|(index, (id, _))| {
+            v.iter().enumerate().for_each(|(index, a)| {
                 match index {
-                    0 => assert_eq!("id01".to_string(), *id),
-                    1 => assert_eq!("id02".to_string(), *id),
-                    2 => assert_eq!("id03_01_01".to_string(), *id),
-                    3 => assert_eq!("id03_01_02".to_string(), *id),
-                    4 => assert_eq!("id03_01_01".to_string(), *id),
-                    5 => assert_eq!("id03_01_02".to_string(), *id),
-                    6 => assert_eq!("id04_01".to_string(), *id),
-                    7 => assert_eq!("id04_02".to_string(), *id),
-                    8 => assert_eq!("id04_03".to_string(), *id),
-                    9 => assert_eq!("id04_04_01".to_string(), *id),
-                    10 => assert_eq!("id04_04_02".to_string(), *id),
-                    11 => assert_eq!("id04_01".to_string(), *id),
-                    12 => assert_eq!("id04_02".to_string(), *id),
-                    13 => assert_eq!("id04_03".to_string(), *id),
+                    0 => assert_eq!("id01".to_string(), *a.id),
+                    1 => assert_eq!("id02".to_string(), *a.id),
+                    2 => assert_eq!("id03_01_01".to_string(), *a.id),
+                    3 => assert_eq!("id03_01_02".to_string(), *a.id),
+                    4 => assert_eq!("id03_01_01".to_string(), *a.id),
+                    5 => assert_eq!("id03_01_02".to_string(), *a.id),
+                    6 => assert_eq!("id04_01".to_string(), *a.id),
+                    7 => assert_eq!("id04_02".to_string(), *a.id),
+                    8 => assert_eq!("id04_03".to_string(), *a.id),
+                    9 => assert_eq!("id04_04_01".to_string(), *a.id),
+                    10 => assert_eq!("id04_04_02".to_string(), *a.id),
+                    11 => assert_eq!("id04_01".to_string(), *a.id),
+                    12 => assert_eq!("id04_02".to_string(), *a.id),
+                    13 => assert_eq!("id04_03".to_string(), *a.id),
                     _ => panic!("more elements than expected"),
                 };
             });

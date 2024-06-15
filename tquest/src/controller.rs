@@ -1,5 +1,5 @@
 use crate::{
-    persistence::QuestionairePersistence, questionaire::{AnswerEntry, BlockAnswer, QuestionAnswerInput, Questionaire, RepeatedQuestionEntry, SubBlock}, ui::{MsgLevel, ProceedScreenResult, QuestionScreenResult, QuestionaireView}, QuestionEntry, QuestionaireEntry
+    persistence::QuestionairePersistence, questionaire::{AnswerEntry, BlockAnswer, QuestionAnswer, QuestionAnswerInput, Questionaire, RepeatedQuestionAnswers, RepeatedQuestionEntry, SubBlock}, ui::{MsgLevel, ProceedScreenResult, QuestionScreenResult, QuestionaireView}, QuestionEntry, QuestionaireEntry
 };
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -74,7 +74,11 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
                         QuestionScreenResult::Canceled => return Ok(ControllerResult::Canceled),
                         QuestionScreenResult::Proceeded(answer) => {
                             let _ = persistence.store_question(&q , &answer);
-                            iteration_answers.push(AnswerEntry::Question(answer));
+                            let qa = QuestionAnswer {
+                                id: q.id.to_string(),
+                                answer: answer.clone(),
+                            };
+                            iteration_answers.push(AnswerEntry::Question(qa));
                         }
                     }
                 }
@@ -234,6 +238,12 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
     view: &mut V,
     persistence: &mut P,
     repeated_question: &RepeatedQuestionEntry, question_count: usize) -> Result<ControllerResult> {
+        fn push_result<P: QuestionairePersistence>(q: &QuestionEntry, answers: &mut Vec<QuestionAnswerInput>, a: &QuestionAnswerInput, persistence: &mut P) {
+            let _ = persistence.store_question(&q , a);
+            answers.push(a.clone());
+        }
+    
+
         fn check_for_min_input<V: QuestionaireView, T> (repeated_question: &RepeatedQuestionEntry, loop_count: usize, view: &mut V, a: &Option<T>) -> bool {
             if (repeated_question.min_count > 0) && (loop_count <= repeated_question.min_count) && (a.is_none()) {
                 let m = format!("Input is needed. Minimal number of elements ({}) isn't reached yet.", repeated_question.min_count);
@@ -288,8 +298,7 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
                             if a.is_none() {
                                 break;
                             }
-                            let _ =persistence.store_question(&q , &answer);
-                            answers.push(answer);
+                            push_result(&q, &mut answers, &answer, persistence);
                         }
                     },
                     QuestionAnswerInput::Int(a) => {
@@ -297,8 +306,7 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
                             if a.is_none() {
                                 break;
                             }
-                            let _ = persistence.store_question(&q , &answer);
-                            answers.push(answer);
+                            push_result(&q, &mut answers, &answer, persistence);
                         }
                     },
                     QuestionAnswerInput::Float(a) => {
@@ -306,8 +314,7 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
                             if a.is_none() {
                                 break;
                             }
-                            let _ = persistence.store_question(&q , &answer);
-                            answers.push(answer);
+                            push_result(&q, &mut answers, &answer, persistence);
                         }
                     },
                     QuestionAnswerInput::Bool(a) => {
@@ -315,8 +322,7 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
                             if a.is_none() {
                                 break;
                             }
-                            let _ = persistence.store_question(&q , &answer);
-                            answers.push(answer);
+                            push_result(&q, &mut answers, &answer, persistence);
                         }                        
                     },
                     QuestionAnswerInput::Option(a) => {
@@ -324,23 +330,33 @@ fn run_repeated_question<V: QuestionaireView, P: QuestionairePersistence> (
                             if a.is_none() {
                                 break;
                             }
-                            let _ = persistence.store_question(&q , &answer);
-                            answers.push(answer);
+                            push_result(&q, &mut answers, &answer, persistence);
                         }                        
-                    }
+                    },
+                    QuestionAnswerInput::None => {
+                        push_result(&q, &mut answers, &answer, persistence);
+                    },
                 };
             }
         }
     }
-    Ok(ControllerResult::Finished(
-        AnswerEntry::RepeatedQuestion(answers)
+    let r = RepeatedQuestionAnswers {
+        id: repeated_question.id.to_string(),
+        answers,
+    };
+Ok(ControllerResult::Finished(
+        AnswerEntry::RepeatedQuestion(r)
     ))
 }
 
 fn get_preferred<P: QuestionairePersistence>(id: &str, persistence: &mut P) -> Option<QuestionAnswerInput> {
     if let Some(i) = persistence.next_answer_id() {
         if i == id {
-            persistence.next_answer()
+            if let Some(a) = persistence.next_answer() {
+                Some(a.answer.clone())
+            } else {
+                None
+            }
         } else {
             Some(QuestionAnswerInput::String(None))
         }
@@ -361,7 +377,7 @@ mod tests {
         match ae {
             AnswerEntry::Block(_) => panic!("unexpected block answer"),
             AnswerEntry::Question(qa) => {
-                if let QuestionAnswerInput::String(qai) = qa {
+                if let QuestionAnswerInput::String(qai) = &qa.answer {
                     assert_eq!(Some(expected_input.to_string()), qai.clone());
                 } else {
                     panic!("expected StringInput, but got something different")
