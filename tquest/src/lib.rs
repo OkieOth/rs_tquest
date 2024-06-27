@@ -12,7 +12,7 @@ use ui::{ProceedScreenResult, QuestionaireView};
 
 use std::{fs, path::Path};
 
-use persistence::{FileQuestionairePersistence, QuestionairePersistence};
+pub use persistence::{FileQuestionairePersistence, QuestionairePersistence};
 pub use questionaire::{Questionaire, QuestionaireBuilder, QuestionaireEntry, QuestionEntry, RepeatedQuestionEntry, 
     SubBlock, EntryType, StringEntry, IntEntry, FloatEntry, BoolEntry, 
     OptionEntry, BlockAnswer, QuestionAnswerInput, AnswerEntry, RepeatedQuestionAnswers, QuestionAnswer};
@@ -20,60 +20,116 @@ pub use controller::QuestionaireResult;
 pub use ui::Ui;
 
 const PERSISTENCE_FILE_NAME: &str = "tquest.tmp";
+const TITLE: &str = "A short questionaire";
 
+pub struct QuestionaireRunner {
+    persistence_file: String,
+    imported_data: Option<Vec<QuestionAnswer>>,
+    title: String,
+    questionaire: Questionaire,
+}
 
-pub fn run_questionaire(title: &str, questionaire: Questionaire) -> Result<QuestionaireResult> {
-    fn check_for_old_persistence_file() -> bool {
-        let p = Path::new(PERSISTENCE_FILE_NAME);
-        p.is_file()
+impl QuestionaireRunner {
+    pub fn builder() -> QuestionaireRunnerBuilder {
+        QuestionaireRunnerBuilder::default()
     }
-    
-    fn remove_persistence_file() {
-        let p = Path::new(PERSISTENCE_FILE_NAME);
-        if p.is_file() {
-            let _ = fs::remove_file(p);
+
+    pub fn run(&self) -> Result<QuestionaireResult> {
+        fn check_for_old_persistence_file(persistence_file: &str) -> bool {
+            let p = Path::new(persistence_file);
+            p.is_file()
         }
-    }
+        
+        fn remove_persistence_file(persistence_file: &str) {
+            let p = Path::new(persistence_file);
+            if p.is_file() {
+                let _ = fs::remove_file(p);
+            }
+        }
+        
     
-
-    let mut ui: Ui = Ui::new()?;
-    if title.len() > 0 {
-        ui.print_title(title);
+        let mut ui: Ui = Ui::new()?;
+        ui.print_title(&self.title);
+        let mut persistence = FileQuestionairePersistence::new(&self.persistence_file)?;
+    
+        let persistence_file_exists = check_for_old_persistence_file(&self.persistence_file);
+    
+        if persistence_file_exists {
+            let r = ui.show_proceed_screen("00", "Found persistence file, for a questionaire. Do you want to load it to proceed where you stopped last time?", None, 0, 0, None);
+            match r {
+                Ok(res) => {
+                    match res {
+                        ProceedScreenResult::Canceled => {
+                            return Err(anyhow!("Canceled by user"));
+                        },
+                        ProceedScreenResult::Proceeded(p) => {
+                            if p {
+                                let _ = persistence.load(Some(&self.persistence_file));
+                            }
+                        },
+                    }
+                },
+                Err(_) => {
+                    return Err(anyhow!("error while processing"));
+                },
+            };
+            if let Ok(ProceedScreenResult::Proceeded(x)) = ui.show_proceed_screen("00", "Do you want to autofil all recent entries? As alternative type 'n' and walk guided through the old results.", None, 0, 0, None) {
+                ui.fast_forward = x
+            };    
+        }
+    
+        let mut c: QuestionaireController<Ui, FileQuestionairePersistence> = QuestionaireController::new(&self.questionaire, ui, persistence);
+        if persistence_file_exists {
+            remove_persistence_file(&self.persistence_file);
+        }
+        c.run()
     }
-    let mut persistence = FileQuestionairePersistence::new(PERSISTENCE_FILE_NAME)?;
+}
 
-    let persistence_file_exists = check_for_old_persistence_file();
+#[derive(Default)]
+pub struct QuestionaireRunnerBuilder {
+    persistence_file: Option<String>,
+    title: Option<String>,
+    imported_data: Option<Vec<QuestionAnswer>>,
+}
 
-    if persistence_file_exists {
-        let r = ui.show_proceed_screen("00", "Found persistence file, for a questionaire. Do you want to load it to proceed where you stopped last time?", None, 0, 0, None);
-        match r {
-            Ok(res) => {
-                match res {
-                    ProceedScreenResult::Canceled => {
-                        return Err(anyhow!("Canceled by user"));
-                    },
-                    ProceedScreenResult::Proceeded(p) => {
-                        if p {
-                            let _ = persistence.load(Some(PERSISTENCE_FILE_NAME));
-                        }
-                    },
-                }
-            },
-            Err(_) => {
-                return Err(anyhow!("error while processing"));
-            },
+impl QuestionaireRunnerBuilder {
+    pub fn persistence_file(&mut self, v: &str) -> &mut Self {
+        self.persistence_file = Some(v.to_string());
+        self
+    }
+    pub fn title(&mut self, v: &str) -> &mut Self {
+        self.title = Some(v.to_string());
+        self
+    }
+    pub fn imported_data(&mut self, v: Option<Vec<QuestionAnswer>>) -> &mut Self {
+        self.imported_data = v;
+        self
+    }
+    pub fn build(&self, questionaire: Questionaire) -> Result<QuestionaireRunner> {
+        let persistence_file = if let Some (pf) = self.persistence_file.as_ref() {
+            pf.to_string()
+        } else {
+            PERSISTENCE_FILE_NAME.to_string()
         };
+        let title = if let Some (t) = self.title.as_ref() {
+            t.to_string()
+        } else {
+            TITLE.to_string()
+        };
+        let imported_data = if let Some(id) = self.imported_data.as_ref() {
+            Some(id.clone())
+        } else {
+            None
+        };
+        Ok(QuestionaireRunner {
+            persistence_file,
+            title,
+            imported_data,
+            questionaire,
+        })
     }
 
-    if let Ok(ProceedScreenResult::Proceeded(x)) = ui.show_proceed_screen("00", "Do you want to autofil all recent entries? As alternative type 'n' and walk guided through the old results.", None, 0, 0, None) {
-        ui.fast_forward = x
-    };
-
-    let mut c: QuestionaireController<Ui, FileQuestionairePersistence> = QuestionaireController::new(questionaire, ui, persistence);
-    if persistence_file_exists {
-        remove_persistence_file();
-    }
-    c.run()
 }
 
 
@@ -92,8 +148,6 @@ mod tests {
         persistence.load(Some(source_file)).expect("error while loading 'res/tquest.tmp'");
         let mut ui: Ui = Ui::new().expect("error while crating UI");
         ui.fast_forward =  true;
-        let questionaire = create_complex_questionaire();
-        let mut c: QuestionaireController<Ui, FileQuestionairePersistence> = QuestionaireController::new(questionaire, ui, persistence);
 
         let p = Path::new(tmp_file);
         if p.is_file() {
@@ -103,6 +157,8 @@ mod tests {
         // Channel for communication
         let (tx, rx) = std::sync::mpsc::channel::<()>();
         std::thread::spawn(move || {
+            let questionaire = create_complex_questionaire();
+            let mut c: QuestionaireController<Ui, FileQuestionairePersistence> = QuestionaireController::new(&questionaire, ui, persistence);
             let _ = c.run();
             tx.send(()).expect("Error sending termination signal"); // Signal thread termination
         });
