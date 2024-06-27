@@ -12,6 +12,7 @@ use std::io::{BufRead, BufReader};
 pub trait QuestionairePersistence {
     fn store_question(&mut self, entry: &QuestionEntry, data: &QuestionAnswerInput) -> Result<()>;
     fn load(&mut self, source: Option<&str>) -> Result<()>;
+    fn import(&mut self, data_to_import: &Vec<QuestionAnswer>);
     fn next_answer(&mut self) -> Option<QuestionAnswer>;
     fn next_answer_id(&mut self) -> Option<String>;
 }
@@ -71,6 +72,12 @@ impl QuestionairePersistence for FileQuestionairePersistence {
         }
     }
 
+    fn import(&mut self, data_to_import: &Vec<QuestionAnswer>) {
+        for i in data_to_import {
+            self.data.push(i.clone());
+        }
+    }
+
     fn next_answer(&mut self) -> Option<QuestionAnswer> {
         if self.current_pos < self.data.len() {
             let e = self.data.get(self.current_pos);
@@ -115,6 +122,9 @@ impl QuestionairePersistence for NoPersistence {
 
     fn load(&mut self, _s: Option<&str>) -> Result<()> {
         Err(anyhow!("Not supported"))
+    }
+
+    fn import(&mut self, _data_to_import: &Vec<QuestionAnswer>) {
     }
 
     fn next_answer(&mut self) -> Option<QuestionAnswer> {

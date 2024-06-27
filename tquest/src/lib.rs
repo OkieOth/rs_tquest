@@ -34,27 +34,20 @@ impl QuestionaireRunner {
         QuestionaireRunnerBuilder::default()
     }
 
-    pub fn run(&self) -> Result<QuestionaireResult> {
-        fn check_for_old_persistence_file(persistence_file: &str) -> bool {
-            let p = Path::new(persistence_file);
-            p.is_file()
+    fn check_for_old_persistence_file(&self) -> bool {
+        let p = Path::new(&self.persistence_file);
+        p.is_file()
+    }
+    
+    fn remove_persistence_file(&self) {
+        let p = Path::new(&self.persistence_file);
+        if p.is_file() {
+            let _ = fs::remove_file(p);
         }
-        
-        fn remove_persistence_file(persistence_file: &str) {
-            let p = Path::new(persistence_file);
-            if p.is_file() {
-                let _ = fs::remove_file(p);
-            }
-        }
-        
-    
-        let mut ui: Ui = Ui::new()?;
-        ui.print_title(&self.title);
-        let mut persistence = FileQuestionairePersistence::new(&self.persistence_file)?;
-    
-        let persistence_file_exists = check_for_old_persistence_file(&self.persistence_file);
-    
-        if persistence_file_exists {
+    }
+
+    fn handle_persistence_file(&self, persistence: &mut FileQuestionairePersistence, ui: &mut Ui) -> Result<bool> {
+        if self.check_for_old_persistence_file() {
             let r = ui.show_proceed_screen("00", "Found persistence file, for a questionaire. Do you want to load it to proceed where you stopped last time?", None, 0, 0, None);
             match r {
                 Ok(res) => {
@@ -76,11 +69,27 @@ impl QuestionaireRunner {
             if let Ok(ProceedScreenResult::Proceeded(x)) = ui.show_proceed_screen("00", "Do you want to autofil all recent entries? As alternative type 'n' and walk guided through the old results.", None, 0, 0, None) {
                 ui.fast_forward = x
             };    
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn run(&self) -> Result<QuestionaireResult> {    
+        let mut ui: Ui = Ui::new()?;
+        ui.print_title(&self.title);
+        let mut persistence = FileQuestionairePersistence::new(&self.persistence_file)?;
+    
+        let mut persistence_file_exists: bool = false;
+        if self.imported_data.is_some() {
+            
+        } else {
+            persistence_file_exists = self.handle_persistence_file(&mut persistence, &mut ui)?;
         }
     
         let mut c: QuestionaireController<Ui, FileQuestionairePersistence> = QuestionaireController::new(&self.questionaire, ui, persistence);
         if persistence_file_exists {
-            remove_persistence_file(&self.persistence_file);
+            self.remove_persistence_file();
         }
         c.run()
     }
