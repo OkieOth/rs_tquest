@@ -22,6 +22,6 @@ jobs:
       - name: Run tests
         run: cargo test --verbose
 
-      - run: cargo publish -p rs_tquest --token ${CRATES_TOKEN}
+      - run: cargo publish -p tquest --token ${CRATES_TOKEN}
         env:
           CRATES_TOKEN: ${{ secrets.CRATES_TOKEN }}
