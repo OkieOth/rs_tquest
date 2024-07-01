@@ -1,5 +1,4 @@
-use tquest::{Questionaire, QuestionEntry, EntryType,QuestionaireEntry, 
-    StringEntry, OptionEntry, SubBlock, run_questionaire};
+use tquest::{EntryType, OptionEntry, QuestionEntry, Questionaire, QuestionaireEntry, QuestionaireRunner, StringEntry, SubBlock};
 
 
 fn get_brother_questions(id_pre: &str) -> Vec<QuestionaireEntry> {
@@ -225,7 +224,11 @@ fn build_questionaire() -> Questionaire {
 
 fn main() {
     let questionaire = build_questionaire();
-    let results = run_questionaire("I AM AN EXAMPLE",questionaire);
+    let results = QuestionaireRunner::builder()
+        .title("I AM AN EXAMPLE")
+        .build(questionaire)
+        .unwrap()
+        .run();
 
     //generate_json_and_send_to_eiko(results);
     println!("Results: {:?}", results);

@@ -17,14 +17,14 @@ pub enum ControllerResult {
 }
 
 
-pub struct QuestionaireController<V: QuestionaireView, P: QuestionairePersistence> {
-    questionaire: Questionaire,
+pub struct QuestionaireController<'a, V: QuestionaireView, P: QuestionairePersistence> {
+    questionaire: &'a Questionaire,
     view: V,
     persistence: P,
 }
 
-impl<V: QuestionaireView, P: QuestionairePersistence> QuestionaireController<V, P> {
-    pub fn new(questionaire: Questionaire, view: V, persistence: P) -> Self {
+impl<'a, V: QuestionaireView, P: QuestionairePersistence> QuestionaireController<'a, V, P> {
+    pub fn new(questionaire: &'a Questionaire, view: V, persistence: P) -> Self {
         Self { questionaire, view, persistence }
     }
 
@@ -103,9 +103,15 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
         block_answer.iterations.push(iteration_answers);
         if let Some(end_text) = sub_block.end_text.as_deref() {
             let mut preferred = match has_preferred_block_answer(&sub_block.id, persistence) {
-                PreferredBlockAnswer::Exist => Some(true),
-                PreferredBlockAnswer::NextHasWrongId => Some(false),
-                _ => None,
+                PreferredBlockAnswer::Exist => {
+                    Some(true)
+                },
+                PreferredBlockAnswer::NextHasWrongId => {
+                    Some(false)
+                },
+                _ => {
+                    None
+                },
             };
             if init {
                 preferred = None;
@@ -121,7 +127,7 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
             } else {
                 0
             };
-        
+
             match view.show_proceed_screen(
                 &sub_block.id,
                 end_text,
@@ -149,6 +155,9 @@ fn enter_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
                 }
             }
         } else {
+            break;
+        }
+        if ! sub_block.loop_over_entries {
             break;
         }
     }
@@ -190,21 +199,18 @@ fn run_sub_block<V: QuestionaireView, P: QuestionairePersistence> (
 
     let mut preferred = match has_preferred_block_answer(&sub_block.id, persistence) {
         PreferredBlockAnswer::Exist => {
-            println!("DEBUG-XXY-1");
             Some(true)
         },
         PreferredBlockAnswer::NextHasWrongId => {
-            println!("DEBUG-XXY-2");
             Some(false)
         },
         _ => {
-            println!("DEBUG-XXY-3");
             None
         },
     };
-    if init {
+    if init && persistence.next_answer_id().is_some() {
         preferred = Some(true)
-    };
+    }
 
     match view.show_proceed_screen(
         &sub_block.id,
@@ -420,7 +426,7 @@ mod tests {
         let questionaire = crate::test_helper::create_small_questionaire();
     
         let np = NoPersistence::new();
-        let mut c: QuestionaireController<UiMock, NoPersistence> = QuestionaireController::new(questionaire, ui, np);
+        let mut c: QuestionaireController<UiMock, NoPersistence> = QuestionaireController::new(&questionaire, ui, np);
         match c.run() {
             Ok(r) => {
                 match r {
@@ -478,7 +484,7 @@ mod tests {
     
         let mut persistence = FileQuestionairePersistence::new("tmp/tquest.tmp").unwrap();
         persistence.load(Some("res/tquest.tmp")).expect("fail to load temp file");
-        let mut c: QuestionaireController<UiMock, FileQuestionairePersistence> = QuestionaireController::new(questionaire, ui, persistence);
+        let mut c: QuestionaireController<UiMock, FileQuestionairePersistence> = QuestionaireController::new(&questionaire, ui, persistence);
         match c.run() {
             Ok(r) => {
                 match r {
@@ -539,7 +545,7 @@ mod tests {
         let ui = UiMock2::default();
         let questionaire = test_helper::create_small_questionaire();
         let np = NoPersistence::new();
-        let mut c: QuestionaireController<UiMock2, NoPersistence> = QuestionaireController::new(questionaire, ui, np);
+        let mut c: QuestionaireController<UiMock2, NoPersistence> = QuestionaireController::new(&questionaire, ui, np);
         let canceled: bool;
         match c.run() {
             Ok(r) => {
@@ -600,7 +606,7 @@ mod tests {
         let questionaire = test_helper::create_complex_questionaire();
     
         let np = NoPersistence::new();
-        let mut c: QuestionaireController<UiMock, NoPersistence> = QuestionaireController::new(questionaire, ui, np);
+        let mut c: QuestionaireController<UiMock, NoPersistence> = QuestionaireController::new(&questionaire, ui, np);
         match c.run() {
             Ok(r) => {
                 match r {
@@ -662,7 +668,7 @@ mod tests {
         let ui = UiMock::default();
         let questionaire = test_helper::create_complex_questionaire();
         let np = NoPersistence::new();
-        let mut c: QuestionaireController<UiMock, NoPersistence> = QuestionaireController::new(questionaire, ui, np);
+        let mut c: QuestionaireController<UiMock, NoPersistence> = QuestionaireController::new(&questionaire, ui, np);
         match c.run() {
             Ok(r) => {
                 match r {
