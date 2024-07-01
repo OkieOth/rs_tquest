@@ -1,4 +1,7 @@
-![WIP](https://img.shields.io/badge/work%20in%20progress-red)
+[![ci](https://github.com/OkieOth/rs_tquest/actions/workflows/rust.yml/badge.svg)](https://github.com/OkieOth/rs_tquest/actions/workflows/rust.yml)
+[![crates.io](https://img.shields.io/crates/v/tquest.svg)](https://crates.io/crates/tquest)
+
+
 
 # tquest
 Rust library crate to implement terminal based questionnaires

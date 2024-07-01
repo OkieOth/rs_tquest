@@ -1,6 +1,5 @@
 //! Main types of the questionaire implementation
 //! 
-use std::default;
 use std::str::FromStr;
 use std::fmt::{Display, Formatter};
 
@@ -523,7 +522,6 @@ impl Into<Option<Vec<String>>> for &RepeatedQuestionAnswers {
 
 #[cfg(test)]
 mod tests {
-    use crate::questionaire;
     use super::*;
     use crate::test_helper;
 

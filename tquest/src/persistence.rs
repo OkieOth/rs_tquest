@@ -72,7 +72,7 @@ impl QuestionairePersistence for FileQuestionairePersistence {
         }
     }
 
-    fn import(&mut self, data_to_import: &Vec<QuestionAnswer>) {
+    fn import (&mut self, data_to_import: &Vec<QuestionAnswer>) {
         for i in data_to_import {
             self.data.push(i.clone());
         }

@@ -26,6 +26,7 @@ pub struct QuestionaireRunner {
     persistence_file: String,
     imported_data: Option<Vec<QuestionAnswer>>,
     title: String,
+    autofil: bool,
     questionaire: Questionaire,
 }
 
@@ -66,9 +67,6 @@ impl QuestionaireRunner {
                     return Err(anyhow!("error while processing"));
                 },
             };
-            if let Ok(ProceedScreenResult::Proceeded(x)) = ui.show_proceed_screen("00", "Do you want to autofil all recent entries? As alternative type 'n' and walk guided through the old results.", None, 0, 0, None) {
-                ui.fast_forward = x
-            };    
             Ok(true)
         } else {
             Ok(false)
@@ -82,11 +80,12 @@ impl QuestionaireRunner {
     
         let mut persistence_file_exists: bool = false;
         if self.imported_data.is_some() {
-            
+            persistence.import(self.imported_data.as_ref().unwrap());
         } else {
             persistence_file_exists = self.handle_persistence_file(&mut persistence, &mut ui)?;
         }
     
+        ui.fast_forward = self.autofil;
         let mut c: QuestionaireController<Ui, FileQuestionairePersistence> = QuestionaireController::new(&self.questionaire, ui, persistence);
         if persistence_file_exists {
             self.remove_persistence_file();
@@ -99,6 +98,7 @@ impl QuestionaireRunner {
 pub struct QuestionaireRunnerBuilder {
     persistence_file: Option<String>,
     title: Option<String>,
+    autofil: bool,
     imported_data: Option<Vec<QuestionAnswer>>,
 }
 
@@ -113,6 +113,10 @@ impl QuestionaireRunnerBuilder {
     }
     pub fn imported_data(&mut self, v: Option<Vec<QuestionAnswer>>) -> &mut Self {
         self.imported_data = v;
+        self
+    }
+    pub fn autofil(&mut self, v: bool) -> &mut Self {
+        self.autofil = v;
         self
     }
     pub fn build(&self, questionaire: Questionaire) -> Result<QuestionaireRunner> {
@@ -134,6 +138,7 @@ impl QuestionaireRunnerBuilder {
         Ok(QuestionaireRunner {
             persistence_file,
             title,
+            autofil: self.autofil,
             imported_data,
             questionaire,
         })

@@ -2,7 +2,6 @@
 use anyhow::Result;
 use colored::Colorize;
 use std::io;
-use anyhow::anyhow;
 
 use crate::questionaire::{QuestionAnswerInput, QuestionEntry, StringEntry, 
     IntEntry, FloatEntry, BoolEntry, OptionEntry, EntryType};
@@ -251,7 +250,7 @@ impl QuestionaireView for Ui {
             if self.fast_forward {
                 // fast forward mode
                 let input_txt: String = a.to_string();
-                if let Ok(ret) = validate_input(&input_txt, &question_entry.entry_type, question_entry.required) {
+                if let Ok(_ret) = validate_input(&input_txt, &question_entry.entry_type, question_entry.required) {
                     // validate was ok ...
                     return print_result_and_return(a);
                 }
