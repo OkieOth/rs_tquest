@@ -1,6 +1,6 @@
 [package]
 name = "tquest"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 description = "Simple observable pattern implementation"
 license = "MIT"
@@ -11,7 +11,7 @@ categories = ["command-line-utilities"]
 
 
 [dependencies]
-builder_m4cro = "0.3.1"
+builder_m4cro = "0.4.0"
 anyhow = "1.0.82"
 colored = "2.1.0"
 regex = "1.10.4"

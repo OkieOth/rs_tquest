@@ -9,7 +9,7 @@ Rust library crate to implement terminal based questionnaires
 
 # Idea
 
-Buid a structure that guides through a set of cascaded questions,
+Build a structure that guides through a set of cascaded questions,
 collect the related answers and use the bundled structe in the end
 to some further processing
 
