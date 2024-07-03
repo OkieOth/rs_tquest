@@ -2,7 +2,9 @@
 use anyhow::Result;
 use colored::Colorize;
 use std::io;
-
+use std::process;
+use rustyline::DefaultEditor;
+use rustyline::error::ReadlineError;
 use crate::questionaire::{QuestionAnswerInput, QuestionEntry, StringEntry, 
     IntEntry, FloatEntry, BoolEntry, OptionEntry, EntryType};
 
@@ -105,7 +107,7 @@ impl QuestionaireView for Ui {
         println!("\n{}\n({})", text_to_display.bold(), get_valid_input_hint(ht.is_some()).dimmed());
         if let Some(a) = preferred {
             let preferred_txt = format!("{}", a).yellow().italic();
-            println!("last input (take it with ENTER): {}", preferred_txt);
+            println!("last input, take it with ⏎: {}", preferred_txt);
         }
         if self.fast_forward  && preferred.is_some() {
             // fast forward mode
@@ -115,30 +117,45 @@ impl QuestionaireView for Ui {
                 return print_result_and_return(true);
             }
         }
+        let mut rl = DefaultEditor::new()?;
         loop {
-            let mut input = String::new(); 
-            io::stdin().read_line(&mut input).expect("error while reading from stdin");
-            match input.to_lowercase().as_str().trim() {
-                "y" | "yes" => return print_result_and_return(true),
-                "n" | "no" => return print_result_and_return(false),
-                "h" | "help" | "?" => {
-                    if let Some(help_text_str) = ht {
-                        println!("\n{}\n", help_text_str);
-                        println!("\n{}\n",get_valid_input_hint(ht.is_some()).dimmed());
-                    } else {
-                        print_wrong_input(ht.is_some());
-                    }
-                },
-                other => {
-                    if other.len() == 0 {
-                        if let Some(a) = preferred {
-                            return print_result_and_return(a);
-                        } else {
-                            return print_result_and_return(true);
+            let readline = rl.readline(">> ");
+            match readline {
+                Ok(line) => {
+                    match line.to_lowercase().as_str().trim() {
+                        "y" | "yes" => return print_result_and_return(true),
+                        "n" | "no" => return print_result_and_return(false),
+                        "h" | "help" | "?" => {
+                            if let Some(help_text_str) = ht {
+                                println!("\n{}\n", help_text_str);
+                                println!("\n{}\n",get_valid_input_hint(ht.is_some()).dimmed());
+                            } else {
+                                print_wrong_input(ht.is_some());
+                            }
+                        },
+                        other => {
+                            if other.len() == 0 {
+                                if let Some(a) = preferred {
+                                    return print_result_and_return(a);
+                                } else {
+                                    return print_result_and_return(true);
+                                }
+                            } else {
+                                print_wrong_input(ht.is_some());
+                            }
                         }
-                    } else {
-                        print_wrong_input(ht.is_some());
-                    }
+                    }        
+                },
+                Err(ReadlineError::Interrupted) => {
+                    println!("CTRL-C");
+                    process::exit(1);
+                },
+                Err(ReadlineError::Eof) => {
+                    println!("CTRL-D");
+                    process::exit(1);
+                },
+                Err(err) => {
+                    panic!("Error: {:?}", err);
                 }
             }
         }
@@ -256,33 +273,47 @@ impl QuestionaireView for Ui {
                 }
             }
     
-            println!("last input (take it with ENTER): {}", s);
+            println!("last input, take it w/ ⏎: {}", s);
             format!("{}", a)
         } else {
             "".to_string()
         };
-
+        let mut rl = DefaultEditor::new()?;
         loop {
+            let readline = rl.readline(">> ");
             let mut input = String::new(); 
-            io::stdin().read_line(&mut input).expect("error while reading from stdin");
-            //let trimmed_input = input.trim();
 
-            let mut str: String = input.trim().to_string();
+            match readline {
+                Ok(line) => {
+                    let mut str: String = line.trim().to_string();
 
-            if (str.len() == 0) && (preferred_txt.len() > 0) {
-                if preferred_txt.len() > 0 {
-                    str = preferred_txt.clone();
-                };
-            };
-
-            if ((str == "h") || (str == "?")) && (question_entry.help_text.is_some()){
-                print_help_text(&question_entry);
-            } else {                
-                if let Ok(ret) = validate_input(&str, &question_entry.entry_type, question_entry.required) {
-                    // validate was ok ...
-                    return print_result_and_return(ret);
-                } else {
-                    print_wrong_input(question_entry);
+                    if (str.len() == 0) && (preferred_txt.len() > 0) {
+                        if preferred_txt.len() > 0 {
+                            str = preferred_txt.clone();
+                        };
+                    };
+        
+                    if ((str == "h") || (str == "?")) && (question_entry.help_text.is_some()){
+                        print_help_text(&question_entry);
+                    } else {                
+                        if let Ok(ret) = validate_input(&str, &question_entry.entry_type, question_entry.required) {
+                            // validate was ok ...
+                            return print_result_and_return(ret);
+                        } else {
+                            print_wrong_input(question_entry);
+                        }
+                    }        
+                },
+                Err(ReadlineError::Interrupted) => {
+                    println!("CTRL-C");
+                    process::exit(1);
+                },
+                Err(ReadlineError::Eof) => {
+                    println!("CTRL-D");
+                    process::exit(1);
+                },
+                Err(err) => {
+                    panic!("Error: {:?}", err);
                 }
             }
         }
@@ -292,7 +323,7 @@ impl QuestionaireView for Ui {
 
 impl ViewHelper for StringEntry {
     fn get_input_hint(&self) -> String {
-        let mut s = "Please enter a string and take it with ENTER".to_string();
+        let mut s = "Please enter a string and take it with ⏎".to_string();
         if let Some(def) = self.default_value.as_ref() {
             s.push_str(&format!(", default: {}", def));
         }
@@ -311,7 +342,7 @@ impl ViewHelper for StringEntry {
 
 impl ViewHelper for IntEntry {
     fn get_input_hint(&self) -> String {
-        let mut s = "Please enter an integer and take it with ENTER".to_string();
+        let mut s = "Please enter an integer and take it with ⏎".to_string();
         if let Some(def) = self.default_value {
             s.push_str(&format!(", default: {}", def));
         }
@@ -327,7 +358,7 @@ impl ViewHelper for IntEntry {
 
 impl ViewHelper for FloatEntry {
     fn get_input_hint(&self) -> String {
-        let mut s = "Please enter a floating point number (e.g. 1.123) and take it with ENTER.".to_string();
+        let mut s = "Please enter a floating point number (e.g. 1.123) and take it with ⏎".to_string();
         if let Some(def) = self.default_value {
             s.push_str(&format!(", default: {}", def));
         }
@@ -343,7 +374,7 @@ impl ViewHelper for FloatEntry {
 
 impl ViewHelper for BoolEntry {
     fn get_input_hint(&self) -> String {
-        let mut s = "Please enter 'y' for 'yes' or 'n' for 'no'. Take it with ENTER.".to_string();
+        let mut s = "Please enter 'y' for 'yes' or 'n' for 'no'. Take it with ⏎".to_string();
         if let Some(def) = self.default_value {
             let def_str = if def { "[y]es" } else { "[n]o" };
             s.push_str(&format!(", default: {}", def_str));
@@ -354,7 +385,7 @@ impl ViewHelper for BoolEntry {
 
 impl ViewHelper for OptionEntry {
     fn get_input_hint(&self) -> String {
-        let mut s = "Please enter the number for one of this options and take it with ENTER.".to_string();
+        let mut s = "Please enter the number for one of this options and take it with ⏎".to_string();
 
         let default_index = if let Some(def) = self.default_value {
             def
